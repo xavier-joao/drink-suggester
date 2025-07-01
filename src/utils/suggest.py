@@ -1,11 +1,36 @@
 import pandas as pd
 import random
-import ast
 import re
 import unicodedata
+import json
+import os  
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics.pairwise import cosine_similarity
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+json_path = os.path.join(script_dir, '..', 'database', 'flavor_map.json')
+
+try:
+    with open(json_path, 'r') as f:
+        FLAVOR_MAP = json.load(f)
+except FileNotFoundError:
+    print(f"Error: Could not find 'flavor_map.json' at expected path: {json_path}")
+    exit()
+
+
+def flavor_probabilities(ingredients):
+    norm_ingredients = [i.lower().strip() for i in ingredients]
+    flavor_counts = {flavor: 0 for flavor in FLAVOR_MAP}
+    for ingr in norm_ingredients:
+        for flavor, flavor_ings in FLAVOR_MAP.items():
+            if any(f in ingr for f in flavor_ings):
+                flavor_counts[flavor] += 1
+    total = sum(flavor_counts.values())
+    if total == 0:
+        return {flavor: 0.0 for flavor in FLAVOR_MAP}
+    return {flavor: round(count / total, 3) for flavor, count in flavor_counts.items()}
 
 def normalize_text(text):
     if not isinstance(text, str):
@@ -23,20 +48,25 @@ def normalize_ingredients(ingredients):
 def prepare_from_stringified_list(path):
     df = pd.read_csv(path)
     df['ingredients_list'] = df['ingredients'].apply(
-        lambda ingr: [remove_parentheses(i) for i in ast.literal_eval(ingr)]
+        lambda ingr: [remove_parentheses(i.strip()) for i in ingr.split(',')]
     )
     df['ingredients_str'] = df['ingredients_list'].apply(
         lambda x: ', '.join(sorted([i.strip().lower() for i in x]))
     )
     df['name'] = df['name'].apply(normalize_text)
     df = df[df['ingredients_list'].apply(lambda x: len(x) > 0)]
+
+    output_csv_path = os.path.join(script_dir, '..', 'database', 'drinks_list.csv')
     df[['name', 'ingredients_str']].rename(
         columns={'ingredients_str': 'ingredients'}
-    ).to_csv('src/database/drinks_list.csv', index=False)
+    ).to_csv(output_csv_path, index=False)
+    
     return df
 
 def train_classifier():
-    drinks_df = pd.read_csv('src/database/drinks_list.csv')
+    db_path = os.path.join(script_dir, '..', 'database', 'drinks_list.csv')
+    drinks_df = pd.read_csv(db_path)
+    
     positives = drinks_df['ingredients'].tolist()
     negatives = generate_negative_samples(drinks_df, n_samples=len(positives))
     X = positives + negatives
@@ -75,7 +105,7 @@ def predict_drink(ingredients, clf, vectorizer):
 
 def generate_negative_samples(drinks_df, n_samples=1000):
     all_ingredients = list(set(
-        ingredient
+        ingredient.strip()
         for ingr_list in drinks_df['ingredients']
         for ingredient in ingr_list.split(', ')
     ))

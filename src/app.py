@@ -1,5 +1,11 @@
 from flask import Flask, request, jsonify, render_template
-from src.utils.suggest import train_classifier, predict_drink, find_similar_drinks
+
+from src.utils.suggest import (
+    train_classifier, 
+    predict_drink, 
+    find_similar_drinks,
+    flavor_probabilities
+)
 
 app = Flask(__name__)
 
@@ -9,13 +15,18 @@ clf, vectorizer, drinks_vec, drinks_df = train_classifier()
 def index():
     result = None
     if request.method == 'POST':
-        ingredients = request.form.get('ingredients', '')
-        ingredients = [i.strip() for i in ingredients.split(',') if i.strip()]
+        ingredients_str = request.form.get('ingredients', '')
+        ingredients = [i.strip() for i in ingredients_str.split(',') if i.strip()]
+        
         if ingredients:
             prob = predict_drink(ingredients, clf, vectorizer)
             similar_drinks = find_similar_drinks(
                 ingredients, vectorizer, drinks_vec, drinks_df, top_n=10, min_similarity=0.3
             )
+            
+            for drink in similar_drinks:
+                drink['flavor_profile'] = flavor_probabilities(drink['ingredients'])
+
             result = {
                 'probability': round(float(prob), 4),
                 'similar_drinks': similar_drinks
@@ -40,7 +51,10 @@ def suggest():
         top_n=5,
         min_similarity=0.3
     )
-    
+
+    for drink in similar_drinks:
+        drink['flavor_profile'] = flavor_probabilities(drink['ingredients'])
+
     return jsonify({
         'probability': float(prob),  
         'similar_drinks': similar_drinks
