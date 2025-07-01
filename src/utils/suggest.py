@@ -4,6 +4,7 @@ import re
 import unicodedata
 import json
 import os  
+from fuzzywuzzy import fuzz, process
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics.pairwise import cosine_similarity
@@ -19,6 +20,29 @@ except FileNotFoundError:
     print(f"Error: Could not find 'flavor_map.json' at expected path: {json_path}")
     exit()
 
+def fuzzy_match_drink_name(search_term, drinks_df, threshold=70, limit=5):
+    """
+    Fuzzy match drink names from the dataframe.
+    Args:
+        search_term: String to search for
+        drinks_df: DataFrame containing drink names
+        threshold: Minimum match score (0-100)
+        limit: Maximum number of matches to return
+    Returns:
+        List of matched drink names with scores
+    """
+    names = drinks_df['name'].tolist()
+    matches = process.extract(
+        search_term,
+        names,
+        scorer=fuzz.token_set_ratio,  # Uses token set ratio for better partial matches
+        limit=limit
+    )
+    # Filter by threshold and return as dicts
+    return [
+        {'name': match[0], 'score': match[1]}
+        for match in matches if match[1] >= threshold
+    ]
 
 def flavor_probabilities(ingredients):
     norm_ingredients = [i.lower().strip() for i in ingredients]
@@ -83,15 +107,31 @@ def find_similar_drinks(ingredients, vectorizer, drinks_vec, drinks_df, top_n, m
     input_str = ', '.join(sorted(norm_ingredients))
     input_vec = vectorizer.transform([input_str])
     similarities = cosine_similarity(input_vec, drinks_vec).flatten()
+    
     results = []
     for idx in similarities.argsort()[::-1]:
         score = similarities[idx]
         if score < min_similarity:
             break
+            
+        drink_ingredients = drinks_df.iloc[idx]['ingredients'].split(', ')
+        ingredient_matches = []
+        for user_ingr in norm_ingredients:
+            best_match = max(
+                [(ingr, fuzz.token_set_ratio(user_ingr, ingr)) for ingr in drink_ingredients],
+                key=lambda x: x[1]
+            )
+            ingredient_matches.append({
+                'user_ingredient': user_ingr,
+                'matched_ingredient': best_match[0],
+                'score': best_match[1]
+            })
+            
         results.append({
             'name': drinks_df.iloc[idx]['name'],
-            'ingredients': drinks_df.iloc[idx]['ingredients'].split(', '),
-            'similarity': round(float(score), 4)
+            'ingredients': drink_ingredients,
+            'similarity': round(float(score), 4),
+            'ingredient_matches': ingredient_matches
         })
         if len(results) >= top_n:
             break

@@ -33,6 +33,24 @@ def index():
             }
     return render_template('index.html', result=result)
 
+@app.route('/search_name', methods=['GET', 'POST'])
+def search_name():
+    if request.method == 'POST':
+        search_term = request.form.get('search_term', '')
+    else:  # GET request
+        search_term = request.args.get('search_term', '')
+    
+    if not search_term:
+        return jsonify({'error': 'No search term provided'}), 400
+    
+    from src.utils.suggest import fuzzy_match_drink_name
+    matches = fuzzy_match_drink_name(search_term, drinks_df)
+    
+    return jsonify({
+        'search_term': search_term,
+        'matches': matches
+    })
+
 @app.route('/suggest', methods=['POST'])
 def suggest():
     data = request.get_json()
