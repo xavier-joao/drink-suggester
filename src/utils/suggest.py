@@ -3,8 +3,9 @@ import random
 import re
 import unicodedata
 import json
-import os  
-from fuzzywuzzy import fuzz, process
+import os
+import numpy as np
+from fuzzywuzzy import fuzz
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics.pairwise import cosine_similarity
@@ -78,12 +79,11 @@ def train_classifier():
     drinks_vec = X_vec[:len(positives)]
     return clf, vectorizer, drinks_vec, drinks_df
 
-from fuzzywuzzy import fuzz
-import numpy as np
-
 def find_similar_drinks(ingredients, vectorizer, drinks_vec, drinks_df, top_n=5, min_similarity=0.3, 
                        fuzzy_threshold=60, use_fuzzy_weight=0.3):
     """
+    Find similar drinks combining cosine similarity and fuzzy matching
+    
     Args:
         ingredients: List of input ingredients
         vectorizer: Fitted CountVectorizer
@@ -98,13 +98,14 @@ def find_similar_drinks(ingredients, vectorizer, drinks_vec, drinks_df, top_n=5,
     input_str = ', '.join(sorted(norm_ingredients))
     input_vec = vectorizer.transform([input_str])
     
+    # Get base cosine similarities
     cosine_sims = cosine_similarity(input_vec, drinks_vec).flatten()
     
+    # Calculate fuzzy matches for all drinks
     fuzzy_scores = []
     for idx in range(len(drinks_df)):
         drink_ingredients = drinks_df.iloc[idx]['ingredients'].split(', ')
         total_score = 0
-        matches = []
         
         for user_ingr in norm_ingredients:
             best_score = max(
@@ -114,12 +115,18 @@ def find_similar_drinks(ingredients, vectorizer, drinks_vec, drinks_df, top_n=5,
             if best_score >= fuzzy_threshold:
                 total_score += best_score
         
-        fuzzy_scores.append(total_score / (100 * len(norm_ingredients)) if norm_ingredients else 0
+        # Normalize fuzzy score
+        if norm_ingredients:
+            fuzzy_scores.append(total_score / (100 * len(norm_ingredients)))
+        else:
+            fuzzy_scores.append(0)
     
     fuzzy_scores = np.array(fuzzy_scores)
     
+    # Combine scores (weighted average)
     combined_scores = (1 - use_fuzzy_weight) * cosine_sims + use_fuzzy_weight * fuzzy_scores
     
+    # Filter and sort results
     results = []
     for idx in np.argsort(combined_scores)[::-1]:
         if combined_scores[idx] < min_similarity:
