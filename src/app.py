@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, render_template
+
 from src.utils.suggest import (
     train_classifier, 
     predict_drink, 
@@ -14,15 +15,15 @@ clf, vectorizer, drinks_vec, drinks_df = train_classifier()
 def index():
     result = None
     page = request.args.get('page', 1, type=int)
-    ingredients = request.form.get('ingredients', '')
     
     if request.method == 'POST':
-        ingredients = request.form.get('ingredients', '')
+        ingredients_str = request.form.get('ingredients', '')
+        ingredients = [i.strip() for i in ingredients_str.split(',') if i.strip()]
+        
         if ingredients:
-            ingredients_list = [i.strip() for i in ingredients.split(',') if i.strip()]
-            prob = predict_drink(ingredients_list, clf, vectorizer)
+            prob = predict_drink(ingredients, clf, vectorizer)
             similar_drinks = find_similar_drinks(
-                ingredients_list, vectorizer, drinks_vec, drinks_df, top_n=100, min_similarity=0.3
+                ingredients, vectorizer, drinks_vec, drinks_df, top_n=100, min_similarity=0.3
             )
             
             for drink in similar_drinks:
@@ -30,8 +31,7 @@ def index():
 
             result = {
                 'probability': round(float(prob), 4),
-                'similar_drinks': similar_drinks,
-                'search_term': ingredients  # Store the search term
+                'similar_drinks': similar_drinks
             }
     
     return render_template('index.html', result=result, page=page)
