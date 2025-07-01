@@ -48,7 +48,7 @@ def train_classifier():
     drinks_vec = X_vec[:len(positives)]
     return clf, vectorizer, drinks_vec, drinks_df
 
-def find_similar_drinks(ingredients, vectorizer, drinks_vec, drinks_df, top_n=5, min_similarity=0.3):
+def find_similar_drinks(ingredients, vectorizer, drinks_vec, drinks_df, top_n, min_similarity):
     norm_ingredients = normalize_ingredients(ingredients)
     input_str = ', '.join(sorted(norm_ingredients))
     input_vec = vectorizer.transform([input_str])

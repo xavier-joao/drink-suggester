@@ -14,7 +14,7 @@ def index():
         if ingredients:
             prob = predict_drink(ingredients, clf, vectorizer)
             similar_drinks = find_similar_drinks(
-                ingredients, vectorizer, drinks_vec, drinks_df, top_n=5, min_similarity=0.3
+                ingredients, vectorizer, drinks_vec, drinks_df, top_n=10, min_similarity=0.3
             )
             result = {
                 'probability': round(float(prob), 4),
