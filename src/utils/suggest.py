@@ -41,7 +41,7 @@ def train_classifier():
     negatives = generate_negative_samples(drinks_df, n_samples=len(positives))
     X = positives + negatives
     y = [1] * len(positives) + [0] * len(negatives)
-    vectorizer = CountVectorizer(tokenizer=lambda x: x.split(', '))
+    vectorizer = CountVectorizer(tokenizer=lambda x: x.split(', '), token_pattern=None)
     X_vec = vectorizer.fit_transform(X)
     clf = LogisticRegression()
     clf.fit(X_vec, y)

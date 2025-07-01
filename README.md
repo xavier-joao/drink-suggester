@@ -54,3 +54,29 @@ To get drink suggestions:
 1. Navigate to the application in your web browser.
 2. Input your available ingredients in the provided field.
 3. Submit the form to receive a list of possible drink combinations.
+
+## API Usage
+
+You can also use the `/suggest` API endpoint directly:
+
+**Example cURL:**
+```sh
+curl -X POST http://localhost:5000/suggest \
+  -H "Content-Type: application/json" \
+  -d '{"ingredients": ["vodka", "lime juice", "triple sec"]}'
+```
+
+**Response:**
+```json
+{
+  "probability": 0.87,
+  "similar_drinks": [
+    {
+      "name": "cosmopolitan",
+      "ingredients": ["vodka", "lime juice", "triple sec", "cranberry juice"],
+      "similarity": 0.95
+    }
+    // ...
+  ]
+}
+```
