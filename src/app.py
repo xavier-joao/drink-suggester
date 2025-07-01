@@ -14,6 +14,8 @@ clf, vectorizer, drinks_vec, drinks_df = train_classifier()
 @app.route('/', methods=['GET', 'POST'])
 def index():
     result = None
+    page = request.args.get('page', 1, type=int)
+    
     if request.method == 'POST':
         ingredients_str = request.form.get('ingredients', '')
         ingredients = [i.strip() for i in ingredients_str.split(',') if i.strip()]
@@ -21,7 +23,7 @@ def index():
         if ingredients:
             prob = predict_drink(ingredients, clf, vectorizer)
             similar_drinks = find_similar_drinks(
-                ingredients, vectorizer, drinks_vec, drinks_df, top_n=10, min_similarity=0.3
+                ingredients, vectorizer, drinks_vec, drinks_df, top_n=100, min_similarity=0.3
             )
             
             for drink in similar_drinks:
@@ -31,7 +33,8 @@ def index():
                 'probability': round(float(prob), 4),
                 'similar_drinks': similar_drinks
             }
-    return render_template('index.html', result=result)
+    
+    return render_template('index.html', result=result, page=page)
 
 @app.route('/suggest', methods=['POST'])
 def suggest():
@@ -44,12 +47,14 @@ def suggest():
     prob = predict_drink(ingredients, clf, vectorizer)
     
     similar_drinks = find_similar_drinks(
-        ingredients,
-        vectorizer,
-        drinks_vec,
-        drinks_df,
-        top_n=5,
-        min_similarity=0.3
+    ingredients, 
+    vectorizer, 
+    drinks_vec, 
+    drinks_df,
+    top_n=20,
+    min_similarity=0.2, 
+    fuzzy_threshold=50,   
+    use_fuzzy_weight=0.4 
     )
 
     for drink in similar_drinks:
