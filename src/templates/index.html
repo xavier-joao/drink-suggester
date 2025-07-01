@@ -7,33 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center font-sans">
-    <div class="mb-8">
-    <h2 class="text-xl font-bold mb-4 text-gray-800">Search by Drink Name</h2>
-    <form method="get" action="/search_name" class="flex">
-        <input 
-            type="text" 
-            name="search_term" 
-            class="flex-grow px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-            placeholder="e.g. Margarita"
-            value="{{ request.args.get('search_term', '') }}"
-        >
-        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-r-lg transition duration-300">
-            Search
-        </button>
-    </form>
-    
-    {% if name_matches %}
-    <div class="mt-4 space-y-2">
-        <h3 class="font-semibold text-gray-700">Matching Drinks:</h3>
-        {% for match in name_matches %}
-        <div class="p-3 bg-gray-50 rounded border border-gray-200">
-            <span class="font-medium">{{ match.name }}</span>
-            <span class="float-right text-sm text-gray-500">{{ match.score }}% match</span>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-</div>
     <div class="w-full max-w-2xl mx-auto py-8 px-4">
         <div class="bg-white rounded-lg shadow-lg p-8">
             <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Drink Suggester</h1>

@@ -20,30 +20,6 @@ except FileNotFoundError:
     print(f"Error: Could not find 'flavor_map.json' at expected path: {json_path}")
     exit()
 
-def fuzzy_match_drink_name(search_term, drinks_df, threshold=70, limit=5):
-    """
-    Fuzzy match drink names from the dataframe.
-    Args:
-        search_term: String to search for
-        drinks_df: DataFrame containing drink names
-        threshold: Minimum match score (0-100)
-        limit: Maximum number of matches to return
-    Returns:
-        List of matched drink names with scores
-    """
-    names = drinks_df['name'].tolist()
-    matches = process.extract(
-        search_term,
-        names,
-        scorer=fuzz.token_set_ratio,  # Uses token set ratio for better partial matches
-        limit=limit
-    )
-    # Filter by threshold and return as dicts
-    return [
-        {'name': match[0], 'score': match[1]}
-        for match in matches if match[1] >= threshold
-    ]
-
 def flavor_probabilities(ingredients):
     norm_ingredients = [i.lower().strip() for i in ingredients]
     flavor_counts = {flavor: 0 for flavor in FLAVOR_MAP}
