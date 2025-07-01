@@ -35,14 +35,22 @@ drink-suggester
 
 4. Access the web application in your browser at `http://localhost:5000`.
 
+## Running with Docker
+
+1. Build the Docker image:
+   ```
+   docker build -t drink-suggester .
+   ```
+
+2. Run the container:
+   ```
+   docker run -p 5000:5000 drink-suggester
+   ```
+
+3. Access the web application at [http://localhost:5000](http://localhost:5000).
+
 ## Usage
 To get drink suggestions:
 1. Navigate to the application in your web browser.
 2. Input your available ingredients in the provided field.
 3. Submit the form to receive a list of possible drink combinations.
-
-## Contributing
-Contributions are welcome! Please feel free to submit a pull request or open an issue for any suggestions or improvements.
-
-## License
-This project is licensed under the MIT License. See the LICENSE file for more details.
