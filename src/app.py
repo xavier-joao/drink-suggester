@@ -44,24 +44,30 @@ def suggest():
     if not ingredients:
         return jsonify({'error': 'No ingredients provided'}), 400
     
+    # Get cached classifier components
+    clf, vectorizer, drinks_vec, drinks_df = get_classifier()
+    
+    # Predict probability
     prob = predict_drink(ingredients, clf, vectorizer)
     
+    # Find similar drinks with optimized fuzzy matching
     similar_drinks = find_similar_drinks(
-    ingredients, 
-    vectorizer, 
-    drinks_vec, 
-    drinks_df,
-    top_n=20,
-    min_similarity=0.2, 
-    fuzzy_threshold=50,   
-    use_fuzzy_weight=0.4 
+        ingredients, 
+        vectorizer, 
+        drinks_vec, 
+        drinks_df,
+        top_n=20,
+        min_similarity=0.2,
+        fuzzy_threshold=50,  # Lower threshold for more forgiving matches
+        use_fuzzy_weight=0.4
     )
 
+    # Add flavor profiles
     for drink in similar_drinks:
         drink['flavor_profile'] = flavor_probabilities(drink['ingredients'])
 
     return jsonify({
-        'probability': float(prob),  
+        'probability': float(prob),
         'similar_drinks': similar_drinks
     })
 
