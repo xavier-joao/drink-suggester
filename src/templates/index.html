@@ -12,14 +12,20 @@
             <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Drink Suggester</h1>
             <form method="post" action="/" class="mb-6">
                 <label for="ingredients" class="block mb-2 font-medium text-gray-700">Ingredients (comma separated):</label>
-                <input 
-                    type="text" 
-                    id="ingredients"
-                    name="ingredients" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    placeholder="e.g. vodka, lime juice, triple sec"
-                    value="{{ result.searched_ingredients|join(', ') if result else '' }}"
-                >
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        id="ingredients"
+                        name="ingredients" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                        placeholder="e.g. vodka, lime juice, triple sec"
+                        value="{{ result.searched_ingredients|join(', ') if result else '' }}"
+                        autocomplete="off"
+                    >
+                    <div id="suggestion-box" class="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg hidden max-h-60 overflow-y-auto">
+                        <!-- Suggestions will be populated here -->
+                    </div>
+                </div>
                 <button type="submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
                     Suggest Drinks
                 </button>
@@ -44,7 +50,7 @@
                         <div class="flex items-center justify-between mb-3">
                             <span class="font-bold text-lg text-blue-700">{{ drink.name | title }}</span>
                             <span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold">
-                                {{ (drink.similarity * 100) | round(1) }}% Match
+                                {{ drink.similarity | round(1) }}% Match
                             </span>
                         </div>
                         <p class="text-gray-600 mb-4 text-sm"><span class="font-semibold">Ingredients:</span> {{ drink.ingredients|join(', ') }}</p>
@@ -75,7 +81,7 @@
                             </div>
                         </div>
                         {% endif %}
-
+                        
                         {% if drink.flavor_profile and drink.flavor_profile.values() | sum > 0 %}
                             <div class="mt-4 pt-3 border-t border-gray-200">
                                 <h6 class="text-sm font-semibold text-gray-600 mb-2">Flavor Profile:</h6>
@@ -108,5 +114,72 @@
             {% endif %}
         </div>
     </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ingredientsInput = document.getElementById('ingredients');
+    const suggestionBox = document.getElementById('suggestion-box');
+    const vocabulary = JSON.parse('{{ vocab_json | safe }}');
+
+    function showSuggestions() {
+        const value = ingredientsInput.value;
+        const lastCommaIndex = value.lastIndexOf(',');
+        const currentTerm = value.substring(lastCommaIndex + 1).trim();
+        
+        suggestionBox.innerHTML = '';
+
+        if (currentTerm.length < 2) {
+            suggestionBox.classList.add('hidden');
+            return;
+        }
+
+        const lowerTerm = currentTerm.toLowerCase();
+        const suggestions = vocabulary.filter(word => word.toLowerCase().startsWith(lowerTerm)).slice(0, 7);
+
+        if (suggestions.length > 0) {
+            const ul = document.createElement('ul');
+            ul.className = 'py-1';
+            suggestions.forEach(suggestion => {
+                const li = document.createElement('li');
+                li.textContent = suggestion;
+                li.dataset.value = suggestion;
+                li.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-800';
+                ul.appendChild(li);
+            });
+            suggestionBox.appendChild(ul);
+            suggestionBox.classList.remove('hidden');
+        } else {
+            suggestionBox.classList.add('hidden');
+        }
+    }
+
+    function applySuggestion(suggestion) {
+        const value = ingredientsInput.value;
+        const lastCommaIndex = value.lastIndexOf(',');
+        const base = (lastCommaIndex === -1) ? '' : value.substring(0, lastCommaIndex + 1) + ' ';
+
+        ingredientsInput.value = base + suggestion + ', ';
+        suggestionBox.classList.add('hidden');
+        ingredientsInput.focus();
+    }
+
+    ingredientsInput.addEventListener('input', showSuggestions);
+    ingredientsInput.addEventListener('focus', showSuggestions);
+
+    suggestionBox.addEventListener('mousedown', function(e) {
+        if (e.target && e.target.tagName === 'LI') {
+            e.preventDefault();
+            applySuggestion(e.target.dataset.value);
+        }
+    });
+
+    ingredientsInput.addEventListener('blur', function() {
+        setTimeout(() => {
+            suggestionBox.classList.add('hidden');
+        }, 150);
+    });
+});
+</script>
+
 </body>
 </html>
