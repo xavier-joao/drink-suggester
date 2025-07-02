@@ -1,11 +1,9 @@
 from flask import Flask, request, jsonify, render_template
 import logging
-import json
 
 from src.utils.suggest import (
     get_drink_recommendations,
-    flavor_probabilities,
-    get_classifier
+    flavor_probabilities
 )
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -16,12 +14,6 @@ app = Flask(__name__)
 @app.route('/', methods=['GET', 'POST'])
 def index():
     final_result = None
-    
-    # Get vocabulary for real-time suggestions
-    # This now correctly unpacks the 4 return values from get_classifier()
-    _, _, _, vocab = get_classifier()
-    vocab_json = json.dumps(vocab)
-
     if request.method == 'POST':
         ingredients_str = request.form.get('ingredients', '')
         ingredients = [i.strip() for i in ingredients_str.split(',') if i.strip()]
@@ -38,7 +30,7 @@ def index():
                 'searched_ingredients': ingredients
             }
     
-    return render_template('index.html', result=final_result, vocab_json=vocab_json)
+    return render_template('index.html', result=final_result)
 
 @app.route('/suggest', methods=['POST'])
 def suggest():
@@ -57,5 +49,4 @@ def suggest():
 
 if __name__ == '__main__':
     # app.run(debug=True)
-    app.run(host='0.0.0.0', port=5000)  
-    
+    app.run(host='0.0.0.0', port=5000)  # Uncomment for production use

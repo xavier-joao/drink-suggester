@@ -10,28 +10,26 @@
     <div class="w-full max-w-2xl mx-auto py-8 px-4">
         <div class="bg-white rounded-lg shadow-lg p-8">
             <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Drink Suggester</h1>
-            <form method="post" action="/" class="mb-6">
+            
+            <!-- CHANGE #1: Add the anchor #results-anchor to the form action -->
+            <form method="post" action="/#results-anchor" class="mb-6">
                 <label for="ingredients" class="block mb-2 font-medium text-gray-700">Ingredients (comma separated):</label>
-                <div class="relative">
-                    <input 
-                        type="text" 
-                        id="ingredients"
-                        name="ingredients" 
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                        placeholder="e.g. vodka, lime juice, triple sec"
-                        value="{{ result.searched_ingredients|join(', ') if result else '' }}"
-                        autocomplete="off"
-                    >
-                    <div id="suggestion-box" class="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg hidden max-h-60 overflow-y-auto">
-                        <!-- Suggestions will be populated here -->
-                    </div>
-                </div>
+                <input 
+                    type="text" 
+                    id="ingredients"
+                    name="ingredients" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    placeholder="e.g. vodka, lime juice, triple sec"
+                    value="{{ result.searched_ingredients|join(', ') if result and result.searched_ingredients else '' }}"
+                >
                 <button type="submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
                     Suggest Drinks
                 </button>
             </form>
+            
             {% if result %}
-                <hr class="my-6 border-t border-gray-200">
+                <!-- CHANGE #2: Add the id here to create the anchor target -->
+                <hr id="results-anchor" class="my-6 border-t border-gray-200">
                 <div class="mb-6">
                     <h4 class="text-lg font-semibold mb-2 text-gray-800">
                         Is this a cocktail? 
@@ -114,72 +112,5 @@
             {% endif %}
         </div>
     </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const ingredientsInput = document.getElementById('ingredients');
-    const suggestionBox = document.getElementById('suggestion-box');
-    const vocabulary = JSON.parse('{{ vocab_json | safe }}');
-
-    function showSuggestions() {
-        const value = ingredientsInput.value;
-        const lastCommaIndex = value.lastIndexOf(',');
-        const currentTerm = value.substring(lastCommaIndex + 1).trim();
-        
-        suggestionBox.innerHTML = '';
-
-        if (currentTerm.length < 2) {
-            suggestionBox.classList.add('hidden');
-            return;
-        }
-
-        const lowerTerm = currentTerm.toLowerCase();
-        const suggestions = vocabulary.filter(word => word.toLowerCase().startsWith(lowerTerm)).slice(0, 7);
-
-        if (suggestions.length > 0) {
-            const ul = document.createElement('ul');
-            ul.className = 'py-1';
-            suggestions.forEach(suggestion => {
-                const li = document.createElement('li');
-                li.textContent = suggestion;
-                li.dataset.value = suggestion;
-                li.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-800';
-                ul.appendChild(li);
-            });
-            suggestionBox.appendChild(ul);
-            suggestionBox.classList.remove('hidden');
-        } else {
-            suggestionBox.classList.add('hidden');
-        }
-    }
-
-    function applySuggestion(suggestion) {
-        const value = ingredientsInput.value;
-        const lastCommaIndex = value.lastIndexOf(',');
-        const base = (lastCommaIndex === -1) ? '' : value.substring(0, lastCommaIndex + 1) + ' ';
-
-        ingredientsInput.value = base + suggestion + ', ';
-        suggestionBox.classList.add('hidden');
-        ingredientsInput.focus();
-    }
-
-    ingredientsInput.addEventListener('input', showSuggestions);
-    ingredientsInput.addEventListener('focus', showSuggestions);
-
-    suggestionBox.addEventListener('mousedown', function(e) {
-        if (e.target && e.target.tagName === 'LI') {
-            e.preventDefault();
-            applySuggestion(e.target.dataset.value);
-        }
-    });
-
-    ingredientsInput.addEventListener('blur', function() {
-        setTimeout(() => {
-            suggestionBox.classList.add('hidden');
-        }, 150);
-    });
-});
-</script>
-
 </body>
 </html>
