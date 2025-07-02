@@ -78,21 +78,15 @@ def expand_ingredients(ingredients, vocab):
     final_expanded_set = set()
     norm_ingredients = normalize_ingredients(ingredients)
     for user_ing in norm_ingredients:
-        # Use regex for whole-word matching to avoid incorrect partial matches
-        # e.g., 'ice' will match 'ice cubes' but not 'lime juice' or 'spiced rum'
         pattern = r'\b' + re.escape(user_ing) + r'\b'
-        
         current_expansions = set()
         for vocab_ing in vocab:
             if re.search(pattern, vocab_ing):
                 current_expansions.add(vocab_ing)
-        
         if current_expansions:
             final_expanded_set.update(current_expansions)
         else:
-            # If no whole-word match was found, add the original term
             final_expanded_set.add(user_ing)
-
     logger.info(f"Expanded search terms from '{ingredients}' to '{list(final_expanded_set)}'")
     return list(final_expanded_set)
 
@@ -129,9 +123,19 @@ def _find_similar_drinks_internal(search_ingredients, original_ingredients, vect
         drink_ingredients = drinks_df.iloc[idx]['ingredients'].split(', ')
         ingredient_matches = []
         for user_ingr in normalize_ingredients(original_ingredients):
-            best_match = max([(ingr, fuzz.partial_ratio(user_ingr, ingr)) for ingr in drink_ingredients], key=lambda x: x[1])
-            ingredient_matches.append({'user_ingredient': user_ingr, 'matched_ingredient': best_match[0], 'score': best_match[1]})
-        results.append({'name': drinks_df.iloc[idx]['name'], 'ingredients': drink_ingredients, 'similarity': round(float(combined_scores[idx]), 4), 'ingredient_matches': ingredient_matches})
+            best_match = max([(ingr, fuzz.WRatio(user_ingr, ingr)) for ingr in drink_ingredients], key=lambda x: x[1])
+            if best_match[1] > 50:
+                ingredient_matches.append({
+                    'user_ingredient': user_ingr,
+                    'matched_ingredient': best_match[0],
+                    'score': best_match[1]
+                })
+        results.append({
+            'name': drinks_df.iloc[idx]['name'],
+            'ingredients': drink_ingredients,
+            'similarity': round(float(combined_scores[idx]), 4),
+            'ingredient_matches': ingredient_matches
+        })
     return results
 
 def predict_drink(ingredients, clf, vectorizer):
