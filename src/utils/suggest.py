@@ -26,7 +26,7 @@ def flavor_probabilities(ingredients):
     flavor_counts = {flavor: 0 for flavor in FLAVOR_MAP}
     for ingr in norm_ingredients:
         for flavor, flavor_ings in FLAVOR_MAP.items():
-            if any(f in ingr for f in flavor_ings):w
+            if any(f in ingr for f in flavor_ings):
                 flavor_counts[flavor] += 1
     total = sum(flavor_counts.values())
     if total == 0:
