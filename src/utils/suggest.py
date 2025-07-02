@@ -26,7 +26,7 @@ def flavor_probabilities(ingredients):
     flavor_counts = {flavor: 0 for flavor in FLAVOR_MAP}
     for ingr in norm_ingredients:
         for flavor, flavor_ings in FLAVOR_MAP.items():
-            if any(f in ingr for f in flavor_ings):
+            if any(f in ingr for f in flavor_ings):w
                 flavor_counts[flavor] += 1
     total = sum(flavor_counts.values())
     if total == 0:
@@ -79,60 +79,90 @@ def train_classifier():
     drinks_vec = X_vec[:len(positives)]
     return clf, vectorizer, drinks_vec, drinks_df
 
-def find_similar_drinks(ingredients, vectorizer, drinks_vec, drinks_df, top_n=5, min_similarity=0.3, 
-                       fuzzy_threshold=60, use_fuzzy_weight=0.3):
-    """
-    Find similar drinks combining cosine similarity and fuzzy matching
+from fuzzywuzzy import fuzz
+import numpy as np
+from functools import lru_cache
+
+# Cache the classifier training to avoid recomputing
+@lru_cache(maxsize=1)
+def get_classifier():
+    db_path = os.path.join(script_dir, '..', 'database', 'drinks_list.csv')
+    drinks_df = pd.read_csv(db_path)
     
-    Args:
-        ingredients: List of input ingredients
-        vectorizer: Fitted CountVectorizer
-        drinks_vec: Vectorized drinks matrix
-        drinks_df: Drinks dataframe
-        top_n: Number of results to return
-        min_similarity: Minimum cosine similarity threshold
-        fuzzy_threshold: Minimum fuzzy match score (0-100)
-        use_fuzzy_weight: How much to weight fuzzy matches (0-1)
+    positives = drinks_df['ingredients'].tolist()
+    negatives = generate_negative_samples(drinks_df, n_samples=len(positives))
+    X = positives + negatives
+    y = [1] * len(positives) + [0] * len(negatives)
+    vectorizer = CountVectorizer(tokenizer=lambda x: x.split(', '), token_pattern=None)
+    X_vec = vectorizer.fit_transform(X)
+    clf = LogisticRegression()
+    clf.fit(X_vec, y)
+    drinks_vec = X_vec[:len(positives)]
+    return clf, vectorizer, drinks_vec, drinks_df
+
+def find_similar_drinks(ingredients, vectorizer, drinks_vec, drinks_df, 
+                       top_n=20, min_similarity=0.2, 
+                       fuzzy_threshold=50, use_fuzzy_weight=0.4):
+    """
+    Optimized version with better fuzzy matching and early termination
     """
     norm_ingredients = normalize_ingredients(ingredients)
     input_str = ', '.join(sorted(norm_ingredients))
+    
+    # Early return if no ingredients
+    if not norm_ingredients:
+        return []
+    
+    # Vectorize input
     input_vec = vectorizer.transform([input_str])
     
+    # Get base cosine similarities
     cosine_sims = cosine_similarity(input_vec, drinks_vec).flatten()
     
-    fuzzy_scores = []
-    for idx in range(len(drinks_df)):
-        drink_ingredients = drinks_df.iloc[idx]['ingredients'].split(', ')
+    # Pre-calculate ingredient sets for fuzzy matching
+    drinks_ingredients = [set(ing.split(', ')) for ing in drinks_df['ingredients']]
+    
+    # Calculate fuzzy matches with early termination
+    fuzzy_scores = np.zeros(len(drinks_df))
+    for i, drink_ingredients in enumerate(drinks_ingredients):
         total_score = 0
+        matched = 0
         
         for user_ingr in norm_ingredients:
-            best_score = max(
-                fuzz.token_set_ratio(user_ingr, ingr) 
-                for ingr in drink_ingredients
-            )
-            if best_score >= fuzzy_threshold:
-                total_score += best_score
+            best_score = 0
+            # Only check for best match if cosine similarity is promising
+            if cosine_sims[i] > min_similarity/2:  
+                best_score = max(
+                    fuzz.partial_ratio(user_ingr, ingr)  # More forgiving than token_set_ratio
+                    for ingr in drink_ingredients
+                )
+                if best_score >= fuzzy_threshold:
+                    total_score += best_score
+                    matched += 1
         
-        if norm_ingredients:
-            fuzzy_scores.append(total_score / (100 * len(norm_ingredients)))
-        else:
-            fuzzy_scores.append(0)
+        # Only calculate score if we found at least one match
+        if matched > 0:
+            fuzzy_scores[i] = total_score / (100 * matched)
     
-    fuzzy_scores = np.array(fuzzy_scores)
-    
+    # Combine scores
     combined_scores = (1 - use_fuzzy_weight) * cosine_sims + use_fuzzy_weight * fuzzy_scores
     
+    # Get top results
+    top_indices = np.argpartition(-combined_scores, min(top_n, len(combined_scores)))[:top_n]
+    top_indices = top_indices[combined_scores[top_indices] >= min_similarity]
+    
+    # Sort the top results
+    top_indices = top_indices[np.argsort(-combined_scores[top_indices])]
+    
+    # Prepare results
     results = []
-    for idx in np.argsort(combined_scores)[::-1]:
-        if combined_scores[idx] < min_similarity:
-            continue
-            
+    for idx in top_indices:
         drink_ingredients = drinks_df.iloc[idx]['ingredients'].split(', ')
         ingredient_matches = []
         
         for user_ingr in norm_ingredients:
             best_match = max(
-                [(ingr, fuzz.token_set_ratio(user_ingr, ingr)) 
+                [(ingr, fuzz.partial_ratio(user_ingr, ingr)) 
                 for ingr in drink_ingredients],
                 key=lambda x: x[1]
             )
@@ -146,13 +176,8 @@ def find_similar_drinks(ingredients, vectorizer, drinks_vec, drinks_df, top_n=5,
             'name': drinks_df.iloc[idx]['name'],
             'ingredients': drink_ingredients,
             'similarity': round(float(combined_scores[idx]), 4),
-            'cosine_similarity': round(float(cosine_sims[idx]), 4),
-            'fuzzy_score': round(float(fuzzy_scores[idx]), 4),
             'ingredient_matches': ingredient_matches
         })
-        
-        if len(results) >= top_n:
-            break
     
     return results
 
