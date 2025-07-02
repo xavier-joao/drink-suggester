@@ -123,12 +123,20 @@ def _find_similar_drinks_internal(search_ingredients, original_ingredients, vect
         drink_ingredients = drinks_df.iloc[idx]['ingredients'].split(', ')
         ingredient_matches = []
         for user_ingr in normalize_ingredients(original_ingredients):
-            best_match = max([(ingr, fuzz.WRatio(user_ingr, ingr)) for ingr in drink_ingredients], key=lambda x: x[1])
-            if best_match[1] > 50:
+            best_match_tuple = max([(ingr, fuzz.WRatio(user_ingr, ingr)) for ingr in drink_ingredients], key=lambda x: x[1])
+            
+            matched_ingr_str = best_match_tuple[0]
+            match_score = best_match_tuple[1]
+
+            len1 = len(user_ingr)
+            len2 = len(matched_ingr_str)
+            length_similarity = min(len1, len2) / max(len1, len2) if max(len1, len2) > 0 else 0
+
+            if match_score > 60 and length_similarity > 0.6:
                 ingredient_matches.append({
                     'user_ingredient': user_ingr,
-                    'matched_ingredient': best_match[0],
-                    'score': best_match[1]
+                    'matched_ingredient': matched_ingr_str,
+                    'score': match_score
                 })
         results.append({
             'name': drinks_df.iloc[idx]['name'],
