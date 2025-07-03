@@ -5,80 +5,202 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drink Suggester</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center font-sans">
-    <div class="w-full max-w-2xl mx-auto py-8 px-4">
-        <div class="bg-white rounded-lg shadow-lg p-8">
-            <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Drink Suggester</h1>
-            <form method="post" action="/" class="mb-6">
-                <label for="ingredients" class="block mb-2 font-medium text-gray-700">Ingredients (comma separated):</label>
-                <input 
-                    type="text" 
-                    id="ingredients"
-                    name="ingredients" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    placeholder="e.g. vodka, lime juice, triple sec"
-                    value="{{ request.form.get('ingredients', '') }}"
-                >
-                <button type="submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
-                    Suggest Drinks
-                </button>
-            </form>
-            {% if result %}
-                <hr class="my-6 border-t border-gray-200">
-                <div class="mb-6">
-                    <h4 class="text-lg font-semibold mb-2 text-gray-800">
-                        Is this a cocktail? 
-                        {% if result.probability < 0.5 %}
-                            <span class="inline-block px-3 py-1 text-sm rounded-full bg-red-100 text-red-800 font-bold">{{ (result.probability * 100) | round }}% Chance</span>
-                        {% else %}
-                            <span class="inline-block px-3 py-1 text-sm rounded-full bg-green-100 text-green-800 font-bold">{{ (result.probability * 100) | round }}% Chance</span>
-                        {% endif %}
-                    </h4>
-                </div>
-                
-                <h5 class="text-xl font-bold mt-4 mb-3 text-gray-800">Suggested Drinks:</h5>
-                <div class="space-y-4">
-                {% for drink in result.similar_drinks %}
-                    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="font-bold text-lg text-blue-700">{{ drink.name | title }}</span>
-                            <span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold">
-                                {{ (drink.similarity * 100) | round(1) }}% Match
-                            </span>
-                        </div>
-                        <p class="text-gray-600 mb-4 text-sm"><span class="font-semibold">Ingredients:</span> {{ drink.ingredients|join(', ') }}</p>
 
-                        {% if drink.flavor_profile and drink.flavor_profile.values() | sum > 0 %}
-                            <div>
+    {% set result = {
+        "probability": 0.85,
+        "similar_drinks": [
+            {
+                "name": "Cosmopolitan",
+                "similarity": 0.95,
+                "ingredients": ["vodka", "triple sec", "lime juice", "cranberry juice"],
+                "flavor_profile": {"sweet": 0.4, "sour": 0.6, "bitter": 0.1, "fruity": 0.7}
+            },
+            {
+                "name": "Margarita",
+                "similarity": 0.78,
+                "ingredients": ["tequila", "lime juice", "triple sec"],
+                "flavor_profile": {"sweet": 0.3, "sour": 0.7, "bitter": 0.0, "fruity": 0.5}
+            },
+            {
+                "name": "Kamikaze",
+                "similarity": 0.92,
+                "ingredients": ["vodka", "lime juice", "triple sec"],
+                "flavor_profile": {"sweet": 0.3, "sour": 0.7, "bitter": 0.0, "fruity": 0.2}
+            }
+        ]
+    } if request.form.get('ingredients') else None %}
+
+    <div
+        x-data="{
+            tab: 'search',
+            bookmarks: [],
+            init() {
+                this.bookmarks = JSON.parse(localStorage.getItem('drinkBookmarks_v2') || '[]');
+                window.addEventListener('htmx:afterSwap', () => {
+                    this.$nextTick(() => {
+                        this.bookmarks = JSON.parse(localStorage.getItem('drinkBookmarks_v2') || '[]');
+                    });
+                });
+            },
+            toggleBookmark(drink) {
+                const index = this.bookmarks.findIndex(b => b.name === drink.name);
+                if (index > -1) {
+                    this.bookmarks.splice(index, 1);
+                } else {
+                    this.bookmarks.push(drink);
+                }
+                localStorage.setItem('drinkBookmarks_v2', JSON.stringify(this.bookmarks));
+            },
+            isBookmarked(drinkName) {
+                return this.bookmarks.some(b => b.name === drinkName);
+            }
+        }"
+        x-init="init()"
+        class="w-full max-w-2xl mx-auto py-8 px-4"
+    >
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <h1 class="text-3xl font-bold text-center mb-4 text-gray-800">Drink Suggester</h1>
+
+            <div class="border-b border-gray-200 mb-6">
+                <nav class="-mb-px flex space-x-6" aria-label="Tabs">
+                    <a href="#" @click.prevent="tab = 'search'" :class="tab === 'search' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                        Suggest Drinks
+                    </a>
+                    <a href="#" @click.prevent="tab = 'bookmarks'" :class="tab === 'bookmarks' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                        My Bookmarks
+                        <span x-show="bookmarks.length > 0" x-text="bookmarks.length" class="ml-2 inline-block py-0.5 px-2 rounded-full text-xs font-medium bg-blue-100 text-blue-600"></span>
+                    </a>
+                </nav>
+            </div>
+            
+            <div x-show="tab === 'search'" x-cloak>
+                <form method="post" action="/" class="mb-6">
+                    <label for="ingredients" class="block mb-2 font-medium text-gray-700">Ingredients (comma separated):</label>
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            id="ingredients"
+                            name="ingredients" 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                            placeholder="e.g. vodka, lime juice"
+                            value="{{ request.form.get('ingredients', '') }}"
+                            hx-get="/ingredient-search"
+                            hx-trigger="keyup changed delay:300ms"
+                            hx-target="#ingredient-results"
+                            autocomplete="off"
+                        >
+                        <div id="ingredient-results"></div>
+                    </div>
+                    <button type="submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                        Suggest Drinks
+                    </button>
+                </form>
+
+                <div id="drink-results-container">
+                {% if result %}
+                    <hr class="my-6 border-t border-gray-200">
+                    <div class="mb-6">
+                        <h4 class="text-lg font-semibold mb-2 text-gray-800">
+                            Is this a cocktail? 
+                            {% if result.probability < 0.5 %}
+                                <span class="inline-block px-3 py-1 text-sm rounded-full bg-red-100 text-red-800 font-bold">{{ (result.probability * 100) | round }}% Chance</span>
+                            {% else %}
+                                <span class="inline-block px-3 py-1 text-sm rounded-full bg-green-100 text-green-800 font-bold">{{ (result.probability * 100) | round }}% Chance</span>
+                            {% endif %}
+                        </h4>
+                    </div>
+                    
+                    <h5 class="text-xl font-bold mt-4 mb-3 text-gray-800">Suggested Drinks:</h5>
+                    <div id="drink-list" class="space-y-4">
+                    {% for drink in result.similar_drinks %}
+                        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex-1">
+                                    <span class="font-bold text-lg text-blue-700">{{ drink.name | title }}</span>
+                                    <span class="block px-3 py-1 mt-1 w-fit rounded-full bg-blue-100 text-blue-800 text-xs font-semibold">
+                                        {{ (drink.similarity * 100) | round(1) }}% Match
+                                    </span>
+                                </div>
+                                <button @click="toggleBookmark({{ drink|tojson|safe }})" title="Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                                    <svg x-show="!isBookmarked('{{ drink.name }}')" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                                    <svg x-show="isBookmarked('{{ drink.name }}')" x-cloak class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                                </button>
+                            </div>
+                            <p class="text-gray-600 mb-4 text-sm"><span class="font-semibold">Ingredients:</span> {{ drink.ingredients|join(', ') }}</p>
+                            {% if drink.flavor_profile and drink.flavor_profile.values() | sum > 0 %}
+                                <div>
+                                    <h6 class="text-sm font-semibold text-gray-600 mb-2">Flavor Profile:</h6>
+                                    <div class="space-y-2">
+                                    {% for flavor, value in drink.flavor_profile.items() if value > 0 %}
+                                        <div class="flex items-center">
+                                            <span class="text-xs font-medium text-gray-700 w-16">{{ flavor | capitalize }}</span>
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5 ml-2">
+                                                {% set color_map = {'sweet': 'bg-pink-400', 'sour': 'bg-lime-400', 'bitter': 'bg-amber-500', 'spicy': 'bg-red-500', 'herbal': 'bg-green-500', 'savory': 'bg-yellow-400', 'fruity': 'bg-purple-400', 'creamy': 'bg-blue-300'} %}
+                                                <div class="{{ color_map.get(flavor, 'bg-gray-400') }} h-2.5 rounded-full" style="width: {{ (value * 100) | round }}%"></div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    </div>
+                    <button
+                        class="mt-6 w-full text-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition duration-300"
+                        hx-get="/get-more-drinks?page=2"
+                        hx-target="#drink-list"
+                        hx-swap="beforeend"
+                    >
+                        Load More
+                    </button>
+                {% endif %}
+                </div>
+            </div>
+
+            <div x-show="tab === 'bookmarks'" x-cloak>
+                <h5 class="text-xl font-bold mb-3 text-gray-800">Bookmarked Drinks</h5>
+                <div x-show="bookmarks.length === 0" class="text-center py-8 px-4 bg-gray-50 rounded-lg">
+                    <p class="text-gray-500">You haven't bookmarked any drinks yet.</p>
+                </div>
+                <div class="space-y-4">
+                    <template x-for="drink in bookmarks" :key="drink.name">
+                        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex-1">
+                                    <span class="font-bold text-lg text-blue-700" x-text="drink.name"></span>
+                                    <span class="block px-3 py-1 mt-1 w-fit rounded-full bg-blue-100 text-blue-800 text-xs font-semibold" x-text="(drink.similarity * 100).toFixed(1) + '% Match'"></span>
+                                </div>
+                                <button @click="toggleBookmark(drink)" title="Remove Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                                    <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                                </button>
+                            </div>
+                            <p class="text-gray-600 mb-4 text-sm"><span class="font-semibold">Ingredients:</span> <span x-text="drink.ingredients.join(', ')"></span></p>
+                            <div x-show="Object.values(drink.flavor_profile).reduce((a, b) => a + b, 0) > 0">
                                 <h6 class="text-sm font-semibold text-gray-600 mb-2">Flavor Profile:</h6>
                                 <div class="space-y-2">
-                                {% for flavor, value in drink.flavor_profile.items() %}
-                                    {% if value > 0 %}
-                                    <div class="flex items-center">
-                                        <span class="text-xs font-medium text-gray-700 w-16">{{ flavor | capitalize }}</span>
-                                        <div class="w-full bg-gray-200 rounded-full h-2.5 ml-2">
-                                            {% set color_class = 'bg-gray-400' %}
-                                            {% if flavor == 'sweet' %}{% set color_class = 'bg-pink-400' %}{% endif %}
-                                            {% if flavor == 'sour' %}{% set color_class = 'bg-lime-400' %}{% endif %}
-                                            {% if flavor == 'bitter' %}{% set color_class = 'bg-amber-500' %}{% endif %}
-                                            {% if flavor == 'spicy' %}{% set color_class = 'bg-red-500' %}{% endif %}
-                                            {% if flavor == 'herbal' %}{% set color_class = 'bg-green-500' %}{% endif %}
-                                            {% if flavor == 'savory' %}{% set color_class = 'bg-yellow-400' %}{% endif %}
-                                            {% if flavor == 'fruity' %}{% set color_class = 'bg-purple-400' %}{% endif %}
-                                            {% if flavor == 'creamy' %}{% set color_class = 'bg-blue-300' %}{% endif %}
-                                            <div class="{{ color_class }} h-2.5 rounded-full" style="width: {{ (value * 100) | round }}%"></div>
+                                    <template x-for="[flavor, value] in Object.entries(drink.flavor_profile)" :key="flavor">
+                                        <div x-show="value > 0" class="flex items-center">
+                                            <span class="text-xs font-medium text-gray-700 w-16" x-text="flavor.charAt(0).toUpperCase() + flavor.slice(1)"></span>
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5 ml-2">
+                                                <div class="h-2.5 rounded-full" :class="{
+                                                    'bg-pink-400': flavor === 'sweet', 'bg-lime-400': flavor === 'sour', 'bg-amber-500': flavor === 'bitter',
+                                                    'bg-red-500': flavor === 'spicy', 'bg-green-500': flavor === 'herbal', 'bg-yellow-400': flavor === 'savory',
+                                                    'bg-purple-400': flavor === 'fruity', 'bg-blue-300': flavor === 'creamy'
+                                                }" :style="`width: ${value * 100}%`"></div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    {% endif %}
-                                {% endfor %}
+                                    </template>
                                 </div>
                             </div>
-                        {% endif %}
-                    </div>
-                {% endfor %}
+                        </div>
+                    </template>
                 </div>
-            {% endif %}
+            </div>
         </div>
     </div>
 </body>
