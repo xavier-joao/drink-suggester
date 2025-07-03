@@ -1,40 +1,36 @@
 from flask import Flask, request, jsonify, render_template
+import logging
 
 from src.utils.suggest import (
-    train_classifier, 
-    predict_drink, 
-    find_similar_drinks,
+    get_drink_recommendations,
     flavor_probabilities
 )
 
-app = Flask(__name__)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-clf, vectorizer, drinks_vec, drinks_df = train_classifier()
+app = Flask(__name__)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    result = None
-    page = request.args.get('page', 1, type=int)
-    
+    final_result = None
     if request.method == 'POST':
         ingredients_str = request.form.get('ingredients', '')
         ingredients = [i.strip() for i in ingredients_str.split(',') if i.strip()]
         
         if ingredients:
-            prob = predict_drink(ingredients, clf, vectorizer)
-            similar_drinks = find_similar_drinks(
-                ingredients, vectorizer, drinks_vec, drinks_df, top_n=100, min_similarity=0.3
-            )
+            response_data = get_drink_recommendations(ingredients)
             
-            for drink in similar_drinks:
+            for drink in response_data['similar_drinks']:
                 drink['flavor_profile'] = flavor_probabilities(drink['ingredients'])
 
-            result = {
-                'probability': round(float(prob), 4),
-                'similar_drinks': similar_drinks
+            final_result = {
+                'probability': response_data['probability'],
+                'similar_drinks': response_data['similar_drinks'],
+                'searched_ingredients': ingredients
             }
     
-    return render_template('index.html', result=result, page=page)
+    return render_template('index.html', result=final_result)
 
 @app.route('/suggest', methods=['POST'])
 def suggest():
@@ -44,29 +40,13 @@ def suggest():
     if not ingredients:
         return jsonify({'error': 'No ingredients provided'}), 400
     
-    clf, vectorizer, drinks_vec, drinks_df = get_classifier()
-    
-    prob = predict_drink(ingredients, clf, vectorizer)
-    
-    similar_drinks = find_similar_drinks(
-        ingredients, 
-        vectorizer, 
-        drinks_vec, 
-        drinks_df,
-        top_n=20,
-        min_similarity=0.2,
-        fuzzy_threshold=50,  # Lower threshold for more forgiving matches
-        use_fuzzy_weight=0.4
-    )
+    response_data = get_drink_recommendations(ingredients)
 
-    # Add flavor profiles
-    for drink in similar_drinks:
+    for drink in response_data['similar_drinks']:
         drink['flavor_profile'] = flavor_probabilities(drink['ingredients'])
 
-    return jsonify({
-        'probability': float(prob),
-        'similar_drinks': similar_drinks
-    })
+    return jsonify(response_data)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)  #     app.run(debug=True)
+    # app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)  # Uncomment for production use
