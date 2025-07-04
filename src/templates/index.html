@@ -21,6 +21,7 @@
                 this.bookmarks = saved ? JSON.parse(saved) : [];
             },
             toggleBookmark(drink) {
+                if (!drink || !drink.name) return;
                 const index = this.bookmarks.findIndex(b => b.name === drink.name);
                 if (index > -1) {
                     this.bookmarks.splice(index, 1);
@@ -28,6 +29,12 @@
                     this.bookmarks.push(drink);
                 }
                 localStorage.setItem('drinkBookmarks_v2', JSON.stringify(this.bookmarks));
+            },
+            toggleBookmarkByIndex(index) {
+                const drink = window.drinkResults[index];
+                if (drink) {
+                    this.toggleBookmark(drink);
+                }
             },
             isBookmarked(drinkName) {
                 return this.bookmarks.some(b => b.name === drinkName);
@@ -75,7 +82,10 @@
                 </form>
 
                 <div id="drink-results-container">
-                {% if result %}
+                {% if result and result.similar_drinks %}
+                    <script>
+                        window.drinkResults = {{ result.similar_drinks|tojson|safe }};
+                    </script>
                     <hr class="my-6 border-t border-gray-200">
                     <div class="mb-6">
                         <h4 class="text-lg font-semibold mb-2 text-gray-800">
@@ -99,7 +109,7 @@
                                         {{ (drink.similarity * 100) | round(1) }}% Match
                                     </span>
                                 </div>
-                                <button @click="toggleBookmark({{ drink|tojson|safe }})" 
+                                <button @click="toggleBookmarkByIndex({{ loop.index0 }})" 
                                 title="Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
                                     <svg x-show="!isBookmarked('{{ drink.name }}')" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
@@ -110,32 +120,6 @@
                                 </button>
                             </div>
                             <p class="text-gray-600 mb-4 text-sm"><span class="font-semibold">Ingredients:</span> {{ drink.ingredients|join(', ') }}</p>
-
-                            {% if drink.flavor_profile and drink.flavor_profile.values() | sum > 0 %}
-                                <div>
-                                    <h6 class="text-sm font-semibold text-gray-600 mb-2">Flavor Profile:</h6>
-                                    <div class="space-y-2">
-                                    {% for flavor, value in drink.flavor_profile.items() if value > 0 %}
-                                        <div class="flex items-center">
-                                            <span class="text-xs font-medium text-gray-700 w-16">{{ flavor | capitalize }}</span>
-                                            <div class="w-full bg-gray-200 rounded-full h-2.5 ml-2">
-                                                {% set color_map = {
-                                                    'sweet': 'bg-pink-400',
-                                                    'sour': 'bg-lime-400',
-                                                    'bitter': 'bg-amber-500',
-                                                    'spicy': 'bg-red-500',
-                                                    'herbal': 'bg-green-500',
-                                                    'savory': 'bg-yellow-400',
-                                                    'fruity': 'bg-purple-400',
-                                                    'creamy': 'bg-blue-300'
-                                                } %}
-                                                <div class="{{ color_map.get(flavor, 'bg-gray-400') }} h-2.5 rounded-full" style="width: {{ (value * 100) | round }}%"></div>
-                                            </div>
-                                        </div>
-                                    {% endfor %}
-                                    </div>
-                                </div>
-                            {% endif %}
                         </div>
                     {% endfor %}
                     </div>
@@ -154,8 +138,6 @@
                             <div class="flex items-start justify-between mb-3">
                                 <div class="flex-1">
                                     <span class="font-bold text-lg text-blue-700" x-text="drink.name"></span>
-                                    <span class="block px-3 py-1 mt-1 w-fit rounded-full bg-blue-100 text-blue-800 text-xs font-semibold" 
-                                          x-text="(drink.similarity * 100).toFixed(1) + '% Match'"></span>
                                 </div>
                                 <button @click="toggleBookmark(drink)" title="Remove Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
                                     <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -167,31 +149,6 @@
                                 <span class="font-semibold">Ingredients:</span> 
                                 <span x-text="Array.isArray(drink.ingredients) ? drink.ingredients.join(', ') : ''"></span>
                             </p>
-                            <div x-show="drink.flavor_profile && Object.keys(drink.flavor_profile).length > 0">
-                                <h6 class="text-sm font-semibold text-gray-600 mb-2">Flavor Profile:</h6>
-                                <div class="space-y-2">
-                                    <template x-for="[flavor, value] in Object.entries(drink.flavor_profile)" :key="flavor">
-                                        <div x-show="value > 0" class="flex items-center">
-                                            <span class="text-xs font-medium text-gray-700 w-16" 
-                                                  x-text="flavor.charAt(0).toUpperCase() + flavor.slice(1)"></span>
-                                            <div class="w-full bg-gray-200 rounded-full h-2.5 ml-2">
-                                                <div class="h-2.5 rounded-full" 
-                                                     :class="{
-                                                        'bg-pink-400': flavor === 'sweet', 
-                                                        'bg-lime-400': flavor === 'sour', 
-                                                        'bg-amber-500': flavor === 'bitter',
-                                                        'bg-red-500': flavor === 'spicy', 
-                                                        'bg-green-500': flavor === 'herbal', 
-                                                        'bg-yellow-400': flavor === 'savory',
-                                                        'bg-purple-400': flavor === 'fruity', 
-                                                        'bg-blue-300': flavor === 'creamy'
-                                                     }" 
-                                                     :style="'width: ' + (value * 100).toFixed(0) + '%'"></div>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
                         </div>
                     </template>
                 </div>

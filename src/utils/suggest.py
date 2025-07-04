@@ -72,25 +72,14 @@ def train_classifier():
 def get_classifier():
     return train_classifier()
 
-def _get_custom_score(str1, str2):
-    wratio_score = fuzz.WRatio(str1, str2)
-    len1, len2 = len(str1), len(str2)
-    length_similarity = min(len1, len2) / max(len1, len2) if max(len1, len2) > 0 else 0
-    final_score = wratio_score * (length_similarity ** 0.5)
-    return final_score
-
-def autocorrect_ingredients(ingredients, vocab, threshold=60):
+def autocorrect_ingredients(ingredients, vocab, threshold=85):
     norm_ingredients = normalize_ingredients(ingredients)
     corrected_ingredients = []
     for ing in norm_ingredients:
-        best_match_tuple = max(
-            [(vocab_item, _get_custom_score(ing, vocab_item)) for vocab_item in vocab],
-            key=lambda x: x[1]
-        )
-        best_match_word, best_score = best_match_tuple[0], best_match_tuple[1]
-
-        if best_score >= threshold:
-            corrected_ingredients.append(best_match_word)
+        best_match, score, _ = process.extractOne(ing, vocab, scorer=fuzz.WRatio)
+        if score >= threshold:
+            logger.info(f"Autocorrecting '{ing}' to '{best_match}' with WRatio score {score}")
+            corrected_ingredients.append(best_match)
         else:
             corrected_ingredients.append(ing)
     return corrected_ingredients
@@ -101,32 +90,35 @@ def _find_similar_drinks_internal(user_ingredients, drinks_df):
         return []
 
     all_results = []
+    max_possible_score = len(norm_user_ingredients) * 100.0
+
     for index, row in drinks_df.iterrows():
         drink_ingredients = row['ingredients'].split(', ')
         total_score = 0
         ingredient_matches = []
 
         for user_ingr in norm_user_ingredients:
-            best_match = max(
-                [(ingr, _get_custom_score(user_ingr, ingr)) for ingr in drink_ingredients],
-                key=lambda x: x[1]
-            )
-            
-            if best_match[1] > 50:
-                total_score += best_match[1]
-                ingredient_matches.append({
-                    'user_ingredient': user_ingr,
-                    'matched_ingredient': best_match[0],
-                    'score': best_match[1]
-                })
+            best_match = process.extractOne(user_ingr, drink_ingredients, scorer=fuzz.WRatio)
+            if best_match:
+                matched_ingredient, score = best_match[0], best_match[1]
+                total_score += score
+                if score > 60:
+                    ingredient_matches.append({
+                        'user_ingredient': user_ingr,
+                        'matched_ingredient': matched_ingredient,
+                        'score': score
+                    })
         
-        avg_score = total_score / len(norm_user_ingredients) if len(norm_user_ingredients) > 0 else 0
-        
-        if avg_score > 40:
+        if max_possible_score > 0:
+            final_similarity = total_score / max_possible_score
+        else:
+            final_similarity = 0.0
+
+        if final_similarity > 0.2:
             all_results.append({
                 'name': row['name'],
                 'ingredients': drink_ingredients,
-                'similarity': round(avg_score, 1),
+                'similarity': round(final_similarity, 4),
                 'ingredient_matches': ingredient_matches
             })
 
@@ -138,21 +130,25 @@ def predict_drink(ingredients, clf, vectorizer):
     user_ingredients_str = ', '.join(sorted(norm_ingredients))
     if not user_ingredients_str:
         return 0.0
-    logger.info(f"PROB CHECK: Calculating probability for: {norm_ingredients}")
     user_vec = vectorizer.transform([user_ingredients_str])
     return clf.predict_proba(user_vec)[0][1]
 
 def get_drink_recommendations(user_ingredients):
     clf, vectorizer, drinks_df, vocab = get_classifier()
     
-    plausible_ingredients = autocorrect_ingredients(user_ingredients, vocab)
-    final_prob = predict_drink(plausible_ingredients, clf, vectorizer)
-    
     results = _find_similar_drinks_internal(user_ingredients, drinks_df)
     
-    if not results and sorted(plausible_ingredients) != sorted(normalize_ingredients(user_ingredients)):
+    if not results:
         logger.warning("Direct search failed. Falling back to search with autocorrected ingredients.")
-        results = _find_similar_drinks_internal(plausible_ingredients, drinks_df)
+        plausible_ingredients = autocorrect_ingredients(user_ingredients, vocab)
+        if sorted(plausible_ingredients) != sorted(normalize_ingredients(user_ingredients)):
+             results = _find_similar_drinks_internal(plausible_ingredients, drinks_df)
+
+    if results:
+        top_drink_ingredients = results[0]['ingredients']
+        final_prob = predict_drink(top_drink_ingredients, clf, vectorizer)
+    else:
+        final_prob = 0.0
 
     return {
         'probability': round(float(final_prob), 4),
