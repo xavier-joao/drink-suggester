@@ -72,7 +72,7 @@ def train_classifier():
 def get_classifier():
     return train_classifier()
 
-def autocorrect_ingredients(ingredients, vocab, threshold=85):
+def autocorrect_ingredients(ingredients, vocab, threshold=65):
     norm_ingredients = normalize_ingredients(ingredients)
     corrected_ingredients = []
     for ing in norm_ingredients:
@@ -146,13 +146,18 @@ def predict_drink(ingredients, clf, vectorizer):
 
 def get_drink_recommendations(user_ingredients):
     clf, vectorizer, drinks_df, vocab = get_classifier()
-    plausible_ingredients = autocorrect_ingredients(user_ingredients, vocab)
-    logger.info(f"PROB CHECK: Using this plausible list for probability: {plausible_ingredients}")
-    final_prob = predict_drink(plausible_ingredients, clf, vectorizer)
+    
+    best_guess_ingredients = autocorrect_ingredients(user_ingredients, vocab, threshold=0)
+    logger.info(f"PROB CHECK: Using best-guess list for probability: {best_guess_ingredients}")
+    final_prob = predict_drink(best_guess_ingredients, clf, vectorizer)
+    
     results = _find_similar_drinks_internal(user_ingredients, drinks_df)
-    if not results and sorted(plausible_ingredients) != sorted(normalize_ingredients(user_ingredients)):
-        logger.warning("Direct search failed. Falling back to search with autocorrected ingredients.")
-        results = _find_similar_drinks_internal(plausible_ingredients, drinks_df)
+    
+    if not results:
+        logger.warning("Direct search failed. Falling back to search with thresholded autocorrect.")
+        plausible_ingredients = autocorrect_ingredients(user_ingredients, vocab) 
+        if sorted(plausible_ingredients) != sorted(normalize_ingredients(user_ingredients)):
+             results = _find_similar_drinks_internal(plausible_ingredients, drinks_df)
 
     return {
         'probability': round(float(final_prob), 4),
