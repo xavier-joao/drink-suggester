@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drink Suggester</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
     <style>
         [x-cloak] { display: none !important; }
@@ -18,7 +17,6 @@
             tab: 'search',
             bookmarks: [],
             init() {
-                // Load bookmarks from localStorage
                 const saved = localStorage.getItem('drinkBookmarks_v2');
                 this.bookmarks = saved ? JSON.parse(saved) : [];
             },
@@ -27,14 +25,7 @@
                 if (index > -1) {
                     this.bookmarks.splice(index, 1);
                 } else {
-                    // Ensure we're only storing what we need
-                    const bookmark = {
-                        name: drink.name,
-                        ingredients: drink.ingredients,
-                        similarity: drink.similarity,
-                        flavor_profile: drink.flavor_profile || {}
-                    };
-                    this.bookmarks.push(bookmark);
+                    this.bookmarks.push(drink);
                 }
                 localStorage.setItem('drinkBookmarks_v2', JSON.stringify(this.bookmarks));
             },
@@ -75,7 +66,7 @@
                             name="ingredients" 
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                             placeholder="e.g. vodka, lime juice"
-                            value="{{ request.form.get('ingredients', '') }}"
+                            value="{{ result.searched_ingredients|join(', ') if result else '' }}"
                         >
                     </div>
                     <button type="submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
@@ -108,12 +99,7 @@
                                         {{ (drink.similarity * 100) | round(1) }}% Match
                                     </span>
                                 </div>
-                                <button @click="toggleBookmark({{ {
-                                    'name': drink.name,
-                                    'ingredients': drink.ingredients,
-                                    'similarity': drink.similarity,
-                                    'flavor_profile': drink.flavor_profile
-                                }|tojson|safe }})" 
+                                <button @click="toggleBookmark({{ drink|tojson|safe }})" 
                                 title="Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
                                     <svg x-show="!isBookmarked('{{ drink.name }}')" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
@@ -124,6 +110,7 @@
                                 </button>
                             </div>
                             <p class="text-gray-600 mb-4 text-sm"><span class="font-semibold">Ingredients:</span> {{ drink.ingredients|join(', ') }}</p>
+
                             {% if drink.flavor_profile and drink.flavor_profile.values() | sum > 0 %}
                                 <div>
                                     <h6 class="text-sm font-semibold text-gray-600 mb-2">Flavor Profile:</h6>
@@ -168,7 +155,7 @@
                                 <div class="flex-1">
                                     <span class="font-bold text-lg text-blue-700" x-text="drink.name"></span>
                                     <span class="block px-3 py-1 mt-1 w-fit rounded-full bg-blue-100 text-blue-800 text-xs font-semibold" 
-                                          x-text="Math.round(drink.similarity * 1000) / 10 + '% Match'"></span>
+                                          x-text="(drink.similarity * 100).toFixed(1) + '% Match'"></span>
                                 </div>
                                 <button @click="toggleBookmark(drink)" title="Remove Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
                                     <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -178,9 +165,9 @@
                             </div>
                             <p class="text-gray-600 mb-4 text-sm">
                                 <span class="font-semibold">Ingredients:</span> 
-                                <span x-text="Array.isArray(drink.ingredients) ? drink.ingredients.join(', ') : drink.ingredients"></span>
+                                <span x-text="Array.isArray(drink.ingredients) ? drink.ingredients.join(', ') : ''"></span>
                             </p>
-                            <div x-show="drink.flavor_profile && Object.values(drink.flavor_profile).reduce((a, b) => a + b, 0) > 0">
+                            <div x-show="drink.flavor_profile && Object.keys(drink.flavor_profile).length > 0">
                                 <h6 class="text-sm font-semibold text-gray-600 mb-2">Flavor Profile:</h6>
                                 <div class="space-y-2">
                                     <template x-for="[flavor, value] in Object.entries(drink.flavor_profile)" :key="flavor">
