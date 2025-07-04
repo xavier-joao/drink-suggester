@@ -16,9 +16,15 @@
         x-data="{
             tab: 'search',
             bookmarks: [],
+            searchResults: [],
             init() {
                 const saved = localStorage.getItem('drinkBookmarks_v2');
                 this.bookmarks = saved ? JSON.parse(saved) : [];
+                
+                // If the data island exists, load its data into Alpine's state
+                if (window.drinkResultsData) {
+                    this.searchResults = window.drinkResultsData;
+                }
             },
             toggleBookmark(drink) {
                 if (!drink || !drink.name) return;
@@ -29,12 +35,6 @@
                     this.bookmarks.push(drink);
                 }
                 localStorage.setItem('drinkBookmarks_v2', JSON.stringify(this.bookmarks));
-            },
-            toggleBookmarkByIndex(index) {
-                const drink = window.drinkResults[index];
-                if (drink) {
-                    this.toggleBookmark(drink);
-                }
             },
             isBookmarked(drinkName) {
                 return this.bookmarks.some(b => b.name === drinkName);
@@ -82,10 +82,13 @@
                 </form>
 
                 <div id="drink-results-container">
-                {% if result and result.similar_drinks %}
+                {% if result %}
+                    {% if result.similar_drinks %}
                     <script>
-                        window.drinkResults = {{ result.similar_drinks|tojson|safe }};
+                        window.drinkResultsData = {{ result.similar_drinks|tojson|safe }};
                     </script>
+                    {% endif %}
+
                     <hr class="my-6 border-t border-gray-200">
                     <div class="mb-6">
                         <h4 class="text-lg font-semibold mb-2 text-gray-800">
@@ -100,28 +103,27 @@
                     
                     <h5 class="text-xl font-bold mt-4 mb-3 text-gray-800">Suggested Drinks:</h5>
                     <div id="drink-list" class="space-y-4">
-                    {% for drink in result.similar_drinks %}
-                        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
-                            <div class="flex items-start justify-between mb-3">
-                                <div class="flex-1">
-                                    <span class="font-bold text-lg text-blue-700">{{ drink.name | title }}</span>
-                                    <span class="block px-3 py-1 mt-1 w-fit rounded-full bg-blue-100 text-blue-800 text-xs font-semibold">
-                                        {{ (drink.similarity * 100) | round(1) }}% Match
-                                    </span>
+                        <template x-for="(drink, index) in searchResults" :key="index">
+                            <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div class="flex-1">
+                                        <span class="font-bold text-lg text-blue-700" x-text="drink.name"></span>
+                                        <span class="block px-3 py-1 mt-1 w-fit rounded-full bg-blue-100 text-blue-800 text-xs font-semibold"
+                                              x-text="(drink.similarity * 100).toFixed(1) + '% Match'"></span>
+                                    </div>
+                                    <button @click="toggleBookmark(drink)" 
+                                    title="Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                                        <svg x-show="!isBookmarked(drink.name)" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                                        </svg>
+                                        <svg x-show="isBookmarked(drink.name)" x-cloak class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                                        </svg>
+                                    </button>
                                 </div>
-                                <button @click="toggleBookmarkByIndex({{ loop.index0 }})" 
-                                title="Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
-                                    <svg x-show="!isBookmarked('{{ drink.name }}')" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
-                                    </svg>
-                                    <svg x-show="isBookmarked('{{ drink.name }}')" x-cloak class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
-                                    </svg>
-                                </button>
+                                <p class="text-gray-600 mb-4 text-sm"><span class="font-semibold">Ingredients:</span> <span x-text="drink.ingredients.join(', ')"></span></p>
                             </div>
-                            <p class="text-gray-600 mb-4 text-sm"><span class="font-semibold">Ingredients:</span> {{ drink.ingredients|join(', ') }}</p>
-                        </div>
-                    {% endfor %}
+                        </template>
                     </div>
                 {% endif %}
                 </div>
