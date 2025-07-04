@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drink Suggester</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
     <style>
         [x-cloak] { display: none !important; }
@@ -18,19 +18,23 @@
             tab: 'search',
             bookmarks: [],
             init() {
-                this.bookmarks = JSON.parse(localStorage.getItem('drinkBookmarks_v2') || '[]');
-                window.addEventListener('htmx:afterSwap', () => {
-                    this.$nextTick(() => {
-                        this.bookmarks = JSON.parse(localStorage.getItem('drinkBookmarks_v2') || '[]');
-                    });
-                });
+                // Load bookmarks from localStorage
+                const saved = localStorage.getItem('drinkBookmarks_v2');
+                this.bookmarks = saved ? JSON.parse(saved) : [];
             },
             toggleBookmark(drink) {
                 const index = this.bookmarks.findIndex(b => b.name === drink.name);
                 if (index > -1) {
                     this.bookmarks.splice(index, 1);
                 } else {
-                    this.bookmarks.push(drink);
+                    // Ensure we're only storing what we need
+                    const bookmark = {
+                        name: drink.name,
+                        ingredients: drink.ingredients,
+                        similarity: drink.similarity,
+                        flavor_profile: drink.flavor_profile || {}
+                    };
+                    this.bookmarks.push(bookmark);
                 }
                 localStorage.setItem('drinkBookmarks_v2', JSON.stringify(this.bookmarks));
             },
@@ -46,12 +50,17 @@
 
             <div class="border-b border-gray-200 mb-6">
                 <nav class="-mb-px flex space-x-6" aria-label="Tabs">
-                    <a href="#" @click.prevent="tab = 'search'" :class="tab === 'search' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                    <a href="#" @click.prevent="tab = 'search'" 
+                       :class="tab === 'search' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" 
+                       class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
                         Suggest Drinks
                     </a>
-                    <a href="#" @click.prevent="tab = 'bookmarks'" :class="tab === 'bookmarks' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                    <a href="#" @click.prevent="tab = 'bookmarks'" 
+                       :class="tab === 'bookmarks' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" 
+                       class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
                         My Bookmarks
-                        <span x-show="bookmarks.length > 0" x-text="bookmarks.length" class="ml-2 inline-block py-0.5 px-2 rounded-full text-xs font-medium bg-blue-100 text-blue-600"></span>
+                        <span x-show="bookmarks.length > 0" x-text="bookmarks.length" 
+                              class="ml-2 inline-block py-0.5 px-2 rounded-full text-xs font-medium bg-blue-100 text-blue-600"></span>
                     </a>
                 </nav>
             </div>
@@ -67,12 +76,7 @@
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                             placeholder="e.g. vodka, lime juice"
                             value="{{ request.form.get('ingredients', '') }}"
-                            hx-get="/ingredient-search"
-                            hx-trigger="keyup changed delay:300ms"
-                            hx-target="#ingredient-results"
-                            autocomplete="off"
                         >
-                        <div id="ingredient-results"></div>
                     </div>
                     <button type="submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
                         Suggest Drinks
@@ -104,9 +108,19 @@
                                         {{ (drink.similarity * 100) | round(1) }}% Match
                                     </span>
                                 </div>
-                                <button @click="toggleBookmark({{ drink|tojson|safe }})" title="Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
-                                    <svg x-show="!isBookmarked('{{ drink.name }}')" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
-                                    <svg x-show="isBookmarked('{{ drink.name }}')" x-cloak class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                                <button @click="toggleBookmark({{ {
+                                    'name': drink.name,
+                                    'ingredients': drink.ingredients,
+                                    'similarity': drink.similarity,
+                                    'flavor_profile': drink.flavor_profile
+                                }|tojson|safe }})" 
+                                title="Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                                    <svg x-show="!isBookmarked('{{ drink.name }}')" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                                    </svg>
+                                    <svg x-show="isBookmarked('{{ drink.name }}')" x-cloak class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                                    </svg>
                                 </button>
                             </div>
                             <p class="text-gray-600 mb-4 text-sm"><span class="font-semibold">Ingredients:</span> {{ drink.ingredients|join(', ') }}</p>
@@ -118,7 +132,16 @@
                                         <div class="flex items-center">
                                             <span class="text-xs font-medium text-gray-700 w-16">{{ flavor | capitalize }}</span>
                                             <div class="w-full bg-gray-200 rounded-full h-2.5 ml-2">
-                                                {% set color_map = {'sweet': 'bg-pink-400', 'sour': 'bg-lime-400', 'bitter': 'bg-amber-500', 'spicy': 'bg-red-500', 'herbal': 'bg-green-500', 'savory': 'bg-yellow-400', 'fruity': 'bg-purple-400', 'creamy': 'bg-blue-300'} %}
+                                                {% set color_map = {
+                                                    'sweet': 'bg-pink-400',
+                                                    'sour': 'bg-lime-400',
+                                                    'bitter': 'bg-amber-500',
+                                                    'spicy': 'bg-red-500',
+                                                    'herbal': 'bg-green-500',
+                                                    'savory': 'bg-yellow-400',
+                                                    'fruity': 'bg-purple-400',
+                                                    'creamy': 'bg-blue-300'
+                                                } %}
                                                 <div class="{{ color_map.get(flavor, 'bg-gray-400') }} h-2.5 rounded-full" style="width: {{ (value * 100) | round }}%"></div>
                                             </div>
                                         </div>
@@ -129,14 +152,6 @@
                         </div>
                     {% endfor %}
                     </div>
-                    <button
-                        class="mt-6 w-full text-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition duration-300"
-                        hx-get="/get-more-drinks?page=2"
-                        hx-target="#drink-list"
-                        hx-swap="beforeend"
-                    >
-                        Load More
-                    </button>
                 {% endif %}
                 </div>
             </div>
@@ -152,25 +167,39 @@
                             <div class="flex items-start justify-between mb-3">
                                 <div class="flex-1">
                                     <span class="font-bold text-lg text-blue-700" x-text="drink.name"></span>
-                                    <span class="block px-3 py-1 mt-1 w-fit rounded-full bg-blue-100 text-blue-800 text-xs font-semibold" x-text="(drink.similarity * 100).toFixed(1) + '% Match'"></span>
+                                    <span class="block px-3 py-1 mt-1 w-fit rounded-full bg-blue-100 text-blue-800 text-xs font-semibold" 
+                                          x-text="Math.round(drink.similarity * 1000) / 10 + '% Match'"></span>
                                 </div>
                                 <button @click="toggleBookmark(drink)" title="Remove Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
-                                    <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                                    <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                                    </svg>
                                 </button>
                             </div>
-                            <p class="text-gray-600 mb-4 text-sm"><span class="font-semibold">Ingredients:</span> <span x-text="drink.ingredients.join(', ')"></span></p>
-                            <div x-show="Object.values(drink.flavor_profile).reduce((a, b) => a + b, 0) > 0">
+                            <p class="text-gray-600 mb-4 text-sm">
+                                <span class="font-semibold">Ingredients:</span> 
+                                <span x-text="Array.isArray(drink.ingredients) ? drink.ingredients.join(', ') : drink.ingredients"></span>
+                            </p>
+                            <div x-show="drink.flavor_profile && Object.values(drink.flavor_profile).reduce((a, b) => a + b, 0) > 0">
                                 <h6 class="text-sm font-semibold text-gray-600 mb-2">Flavor Profile:</h6>
                                 <div class="space-y-2">
                                     <template x-for="[flavor, value] in Object.entries(drink.flavor_profile)" :key="flavor">
                                         <div x-show="value > 0" class="flex items-center">
-                                            <span class="text-xs font-medium text-gray-700 w-16" x-text="flavor.charAt(0).toUpperCase() + flavor.slice(1)"></span>
+                                            <span class="text-xs font-medium text-gray-700 w-16" 
+                                                  x-text="flavor.charAt(0).toUpperCase() + flavor.slice(1)"></span>
                                             <div class="w-full bg-gray-200 rounded-full h-2.5 ml-2">
-                                                <div class="h-2.5 rounded-full" :class="{
-                                                    'bg-pink-400': flavor === 'sweet', 'bg-lime-400': flavor === 'sour', 'bg-amber-500': flavor === 'bitter',
-                                                    'bg-red-500': flavor === 'spicy', 'bg-green-500': flavor === 'herbal', 'bg-yellow-400': flavor === 'savory',
-                                                    'bg-purple-400': flavor === 'fruity', 'bg-blue-300': flavor === 'creamy'
-                                                }" :style="`width: ${value * 100}%`"></div>
+                                                <div class="h-2.5 rounded-full" 
+                                                     :class="{
+                                                        'bg-pink-400': flavor === 'sweet', 
+                                                        'bg-lime-400': flavor === 'sour', 
+                                                        'bg-amber-500': flavor === 'bitter',
+                                                        'bg-red-500': flavor === 'spicy', 
+                                                        'bg-green-500': flavor === 'herbal', 
+                                                        'bg-yellow-400': flavor === 'savory',
+                                                        'bg-purple-400': flavor === 'fruity', 
+                                                        'bg-blue-300': flavor === 'creamy'
+                                                     }" 
+                                                     :style="'width: ' + (value * 100).toFixed(0) + '%'"></div>
                                             </div>
                                         </div>
                                     </template>
