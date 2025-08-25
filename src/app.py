@@ -28,7 +28,7 @@ def index():
                 "probability":       response_data["probability"],
                 "similar_drinks":    response_data["similar_drinks"],
                 "searched_ingredients": ingredients,
-                "flavor_profile":    response_data["flavor_profile"],   #  <- NEW
+                "flavor_profile":    response_data["flavor_profile"], 
             }
 
     
