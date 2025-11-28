@@ -151,8 +151,6 @@ def get_drink_recommendations(user_ingredients):
     logger.info(f"PROB CHECK: Using best-guess list for probability: {best_guess_ingredients}")
     final_prob = predict_drink(best_guess_ingredients, clf, vectorizer)
     
-    flavor_profile = flavor_probabilities(user_ingredients)
-    
     results = _find_similar_drinks_internal(user_ingredients, drinks_df)
     
     if not results:
@@ -163,8 +161,7 @@ def get_drink_recommendations(user_ingredients):
 
     return {
         'probability': round(float(final_prob), 4),
-        'similar_drinks': results,
-        'flavor_profile': flavor_profile 
+        'similar_drinks': results
     }
 
 def generate_negative_samples(drinks_df, n_samples=1000):
@@ -177,7 +174,6 @@ def generate_negative_samples(drinks_df, n_samples=1000):
         if sample not in existing_combinations:
             negatives.add(sample)
     return list(negatives)
-
 
 def get_all_ingredients():
     """
