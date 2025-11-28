@@ -174,3 +174,25 @@ def generate_negative_samples(drinks_df, n_samples=1000):
         if sample not in existing_combinations:
             negatives.add(sample)
     return list(negatives)
+
+def get_all_ingredients():
+    """
+    Returns a sorted list of all unique ingredients found in the database.
+    """
+    db_path = os.path.join(script_dir, '..', 'database', 'drinks_list.csv')
+    try:
+        drinks_df = pd.read_csv(db_path)
+        all_ingredients = set()
+        for ing_list in drinks_df['ingredients']:
+            if isinstance(ing_list, str):
+                # Split by comma and strip whitespace
+                ingredients = [i.strip() for i in ing_list.split(',')]
+                # Normalize and add to set
+                for ing in ingredients:
+                    if ing:
+                        all_ingredients.add(ing.lower()) # Store as lower case for consistency
+        
+        return sorted(list(all_ingredients))
+    except Exception as e:
+        logger.error(f"Error getting all ingredients: {e}")
+        return []
