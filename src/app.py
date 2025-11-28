@@ -30,15 +30,17 @@ def index():
         
         if ingredients:
             response_data = get_drink_recommendations(ingredients)
-            
-            for drink in response_data['similar_drinks']:
-                drink['flavor_profile'] = flavor_probabilities(drink['ingredients'])
-
+        
+            for drink in response_data["similar_drinks"]:
+                drink["flavor_profile"] = flavor_probabilities(drink["ingredients"])
+        
             final_result = {
-                'probability': response_data['probability'],
-                'similar_drinks': response_data['similar_drinks'],
-                'searched_ingredients': ingredients
+                "probability":       response_data["probability"],
+                "similar_drinks":    response_data["similar_drinks"],
+                "searched_ingredients": ingredients,
+                "flavor_profile":    response_data["flavor_profile"], 
             }
+
     
     return render_template('index.html', result=final_result, available_ingredients=all_ingredients)
 

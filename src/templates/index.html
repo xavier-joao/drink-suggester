@@ -18,7 +18,6 @@
 </head>
 
 <body class="bg-gray-100 min-h-screen flex items-center justify-center font-sans">
-
     <div x-data="{
             tab: 'search',
             bookmarks: [],
@@ -26,7 +25,6 @@
             init() {
                 const saved = localStorage.getItem('drinkBookmarks_v2');
                 this.bookmarks = saved ? JSON.parse(saved) : [];
-                
                 if (window.drinkResultsData) {
                     this.searchResults = window.drinkResultsData;
                 }
@@ -50,17 +48,17 @@
 
             <div class="border-b border-gray-200 mb-6">
                 <nav class="-mb-px flex space-x-6" aria-label="Tabs">
-                    <a href="#" @click.prevent="tab = 'search'"
-                        :class="tab === 'search' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                    <a href="#" @click.prevent="tab = 'search'" 
+                       :class="tab === 'search' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" 
+                       class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
                         Suggest Drinks
                     </a>
-                    <a href="#" @click.prevent="tab = 'bookmarks'"
-                        :class="tab === 'bookmarks' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                    <a href="#" @click.prevent="tab = 'bookmarks'" 
+                       :class="tab === 'bookmarks' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" 
+                       class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
                         My Bookmarks
-                        <span x-show="bookmarks.length > 0" x-text="bookmarks.length"
-                            class="ml-2 inline-block py-0.5 px-2 rounded-full text-xs font-medium bg-blue-100 text-blue-600"></span>
+                        <span x-show="bookmarks.length > 0" x-text="bookmarks.length" 
+                              class="ml-2 inline-block py-0.5 px-2 rounded-full text-xs font-medium bg-blue-100 text-blue-600"></span>
                     </a>
                 </nav>
             </div>
@@ -117,7 +115,7 @@
                                 {% endif %}
                         </h4>
                     </div>
-
+                    
                     <h5 class="text-xl font-bold mt-4 mb-3 text-gray-800">Suggested Drinks:</h5>
                     <div id="drink-list" class="space-y-4">
                         <template x-for="(drink, index) in searchResults" :key="index">
@@ -129,18 +127,13 @@
                                             class="block px-3 py-1 mt-1 w-fit rounded-full bg-blue-100 text-blue-800 text-xs font-semibold"
                                             x-text="(drink.similarity * 100).toFixed(1) + '% Match'"></span>
                                     </div>
-                                    <button @click="toggleBookmark(drink)" title="Bookmark"
-                                        class="p-2 rounded-full hover:bg-gray-200 transition-colors">
-                                        <svg x-show="!isBookmarked(drink.name)" class="w-5 h-5 text-gray-400"
-                                            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                            xmlns="http://www.w3.org/2000/svg">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                                    <button @click="toggleBookmark(drink)" 
+                                    title="Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                                        <svg x-show="!isBookmarked(drink.name)" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                                         </svg>
-                                        <svg x-show="isBookmarked(drink.name)" x-cloak class="w-5 h-5 text-yellow-500"
-                                            fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                                        <svg x-show="isBookmarked(drink.name)" x-cloak class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                                         </svg>
                                     </button>
                                 </div>
@@ -161,8 +154,9 @@
                                                         stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                                                 </svg>
                                                 <span class="text-gray-700" x-text="match.matched_ingredient"></span>
-
-                                                <span class="ml-3 px-2 py-0.5 rounded-full text-xs font-bold" :class="{
+                                                
+                                                <span class="ml-3 px-2 py-0.5 rounded-full text-xs font-bold"
+                                                      :class="{
                                                         'bg-green-200 text-green-800': match.score > 85,
                                                         'bg-yellow-200 text-yellow-800': match.score > 70 && match.score <= 85,
                                                         'bg-red-200 text-red-800': match.score <= 70
@@ -173,8 +167,7 @@
                                     </div>
                                 </div>
 
-                                <p class="text-gray-600 text-sm"><span class="font-semibold">Ingredients:</span> <span
-                                        x-text="drink.ingredients.join(', ')"></span></p>
+                                <p class="text-gray-600 text-sm"><span class="font-semibold">Ingredients:</span> <span x-text="drink.ingredients.join(', ')"></span></p>
                             </div>
                         </template>
                     </div>
@@ -194,12 +187,9 @@
                                 <div class="flex-1">
                                     <span class="font-bold text-lg text-blue-700" x-text="drink.name"></span>
                                 </div>
-                                <button @click="toggleBookmark(drink)" title="Remove Bookmark"
-                                    class="p-2 rounded-full hover:bg-gray-200 transition-colors">
-                                    <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"
-                                        xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                                <button @click="toggleBookmark(drink)" title="Remove Bookmark" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                                    <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                                     </svg>
                                 </button>
                             </div>
