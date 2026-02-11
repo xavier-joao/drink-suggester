@@ -20,6 +20,8 @@
             probability: null,
             searched_ingredients: [],
             ingredientTags: [],
+            best_guess: [],
+            corrections: [],
             loading: false,
             exactMatch: false,
             init() {
@@ -35,14 +37,49 @@
                         this.ingredientTags.push(ingredient.toLowerCase());
                     }
                     input.value = '';
+                    // Automatically search after adding a tag
+                    try {
+                        this.searchDrinks();
+                    } catch (err) {
+                        console.error('Auto-search failed:', err);
+                    }
                 }
             },
             removeIngredientTag(index) {
                 this.ingredientTags.splice(index, 1);
+                // Clear autocorrect suggestions when no tags remain
+                if (this.ingredientTags.length === 0) {
+                    this.corrections = [];
+                    this.best_guess = [];
+                    this.searchResults = [];
+                    this.probability = null;
+                } else {
+                    // Auto-run search after removing a tag
+                    try {
+                        this.searchDrinks();
+                    } catch (err) {
+                        console.error('Auto-search on remove failed:', err);
+                    }
+                }
             },
             async searchDrinks(e) {
-                e.preventDefault();
+                if (e && e.preventDefault) e.preventDefault();
                 
+                // If there's text in the input, convert it to a tag before searching
+                try {
+                    const inputEl = document.getElementById('ingredients');
+                    const inputVal = inputEl ? inputEl.value.trim() : '';
+                    if (inputVal) {
+                        const lower = inputVal.toLowerCase();
+                        if (!this.ingredientTags.includes(lower)) {
+                            this.ingredientTags.push(lower);
+                        }
+                        if (inputEl) inputEl.value = '';
+                    }
+                } catch (err) {
+                    console.warn('Error reading input field:', err);
+                }
+
                 if (!this.ingredientTags.length) {
                     alert('Please add at least one ingredient');
                     return;
@@ -66,8 +103,11 @@
                     }
                     
                     const data = await response.json();
+                    console.log('suggest /response', data);
                     this.probability = data.probability;
                     this.searchResults = data.similar_drinks;
+                    this.best_guess = data.best_guess || [];
+                    this.corrections = data.corrections || [];
                     this.searched_ingredients = this.ingredientTags;
                     window.drinkResultsData = data.similar_drinks;
                 } catch (error) {
@@ -126,6 +166,25 @@
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                             placeholder="e.g. vodka, lime juice"
                         >
+                    </div>
+
+                    <!-- Correction suggestions (autocorrect mapping) -->
+                    <div x-show="corrections.length > 0" class="mt-2">
+                        <p class="text-sm text-gray-600 mb-1">Did you mean:</p>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="(c, i) in corrections" :key="i">
+                                <button type="button" @click="ingredientTags = best_guess; searchDrinks()" class="inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                                    <span x-text="c.original"></span>
+                                    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                    <span x-text="c.corrected"></span>
+                                </button>
+                            </template>
+                            <template x-if="corrections.length > 0">
+                                <button type="button" @click="ingredientTags = best_guess; searchDrinks()" class="inline-flex items-center gap-2 px-3 py-1 bg-yellow-200 text-yellow-900 rounded-full text-sm font-semibold">
+                                    Apply all corrections
+                                </button>
+                            </template>
+                        </div>
                     </div>
 
                     <!-- Ingredient Tags -->
