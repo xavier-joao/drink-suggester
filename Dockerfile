@@ -7,6 +7,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Create instance directory for database
+RUN mkdir -p /app/instance && chmod 755 /app/instance
+
 ENV PYTHONPATH=/app
 
 EXPOSE 5000

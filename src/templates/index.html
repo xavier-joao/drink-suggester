@@ -17,12 +17,64 @@
             tab: 'search',
             bookmarks: [],
             searchResults: [],
+            probability: null,
+            searched_ingredients: [],
+            ingredientTags: [],
+            loading: false,
+            exactMatch: false,
             init() {
                 const saved = localStorage.getItem('drinkBookmarks_v2');
                 this.bookmarks = saved ? JSON.parse(saved) : [];
+            },
+            addIngredientTag(e) {
+                if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    const input = e.target;
+                    const ingredient = input.value.trim();
+                    if (ingredient && !this.ingredientTags.includes(ingredient.toLowerCase())) {
+                        this.ingredientTags.push(ingredient.toLowerCase());
+                    }
+                    input.value = '';
+                }
+            },
+            removeIngredientTag(index) {
+                this.ingredientTags.splice(index, 1);
+            },
+            async searchDrinks(e) {
+                e.preventDefault();
                 
-                if (window.drinkResultsData) {
-                    this.searchResults = window.drinkResultsData;
+                if (!this.ingredientTags.length) {
+                    alert('Please add at least one ingredient');
+                    return;
+                }
+                
+                this.loading = true;
+                try {
+                    const response = await fetch('/suggest', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            ingredients: this.ingredientTags, 
+                            exact_match: this.exactMatch 
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to get suggestions');
+                    }
+                    
+                    const data = await response.json();
+                    this.probability = data.probability;
+                    this.searchResults = data.similar_drinks;
+                    this.searched_ingredients = this.ingredientTags;
+                    window.drinkResultsData = data.similar_drinks;
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error fetching suggestions');
+                } finally {
+                    this.loading = false;
                 }
             },
             toggleBookmark(drink) {
@@ -63,51 +115,85 @@
             </div>
             
             <div x-show="tab === 'search'" x-cloak>
-                <form method="post" action="/" class="mb-6">
-                    <label for="ingredients" class="block mb-2 font-medium text-gray-700">Ingredients (comma separated):</label>
+                <form @submit="searchDrinks" class="mb-6">
+                    <label for="ingredients" class="block mb-2 font-medium text-gray-700">Ingredients (type and press Enter or comma):</label>
                     <div class="relative">
                         <input 
                             type="text" 
                             id="ingredients"
                             name="ingredients" 
+                            @keydown="addIngredientTag"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                             placeholder="e.g. vodka, lime juice"
-                            value="{{ result.searched_ingredients|join(', ') if result else '' }}"
                         >
                     </div>
-                    <button type="submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
-                        Suggest Drinks
+
+                    <!-- Ingredient Tags -->
+                    <div x-show="ingredientTags.length > 0" class="mt-3 flex flex-wrap gap-2">
+                        <template x-for="(tag, index) in ingredientTags" :key="index">
+                            <span class="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                                <span x-text="tag"></span>
+                                <button 
+                                    type="button"
+                                    @click="removeIngredientTag(index)"
+                                    class="text-blue-500 hover:text-blue-700 font-bold cursor-pointer"
+                                >
+                                    ×
+                                </button>
+                            </span>
+                        </template>
+                    </div>
+
+                    <div class="mt-4 flex items-center">
+                        <label class="flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                x-model="exactMatch" 
+                                class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                            >
+                            <span class="ml-2 text-sm font-medium text-gray-700">Exact Match Only (drinks with ONLY these ingredients)</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" :disabled="loading" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                        <span x-show="!loading">Suggest Drinks</span>
+                        <span x-show="loading">Loading...</span>
                     </button>
                 </form>
 
                 <div id="drink-results-container">
-                {% if result %}
-                    {% if result.similar_drinks %}
-                    <script>
-                        window.drinkResultsData = {{ result.similar_drinks|tojson|safe }};
-                    </script>
-                    {% endif %}
-
-                    <hr class="my-6 border-t border-gray-200">
-                    <div class="mb-6">
-                        <h4 class="text-lg font-semibold mb-2 text-gray-800">
-                            Is this a cocktail? 
-                            {% if result.probability < 0.5 %}
-                                <span class="inline-block px-3 py-1 text-sm rounded-full bg-red-100 text-red-800 font-bold">{{ (result.probability * 100) | round }}% Chance</span>
-                            {% else %}
-                                <span class="inline-block px-3 py-1 text-sm rounded-full bg-green-100 text-green-800 font-bold">{{ (result.probability * 100) | round }}% Chance</span>
-                            {% endif %}
-                        </h4>
+                <div x-show="probability !== null">
+                    <div x-show="!exactMatch" class="mb-6">
+                        <hr class="my-6 border-t border-gray-200">
+                        <div class="mb-6">
+                            <h4 class="text-lg font-semibold mb-2 text-gray-800">
+                                Is this a cocktail? 
+                                <span x-show="probability < 0.5" class="inline-block px-3 py-1 text-sm rounded-full bg-red-100 text-red-800 font-bold" x-text="Math.round(probability * 100) + '% Chance'"></span>
+                                <span x-show="probability >= 0.5" class="inline-block px-3 py-1 text-sm rounded-full bg-green-100 text-green-800 font-bold" x-text="Math.round(probability * 100) + '% Chance'"></span>
+                            </h4>
+                        </div>
                     </div>
                     
-                    <h5 class="text-xl font-bold mt-4 mb-3 text-gray-800">Suggested Drinks:</h5>
+                    <div x-show="exactMatch" class="mb-6">
+                        <hr class="my-6 border-t border-gray-200">
+                        <div class="mb-6">
+                            <h5 class="text-lg font-semibold text-gray-800 bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                ✓ Exact Match Mode: Showing drinks with ONLY your ingredients
+                            </h5>
+                        </div>
+                    </div>
+                    
+                    <h5 class="text-xl font-bold mt-4 mb-3 text-gray-800">
+                        <span x-show="!exactMatch">Suggested Drinks:</span>
+                        <span x-show="exactMatch">Matching Drinks:</span>
+                    </h5>
                     <div id="drink-list" class="space-y-4">
                         <template x-for="(drink, index) in searchResults" :key="index">
                             <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
                                 <div class="flex items-start justify-between mb-3">
                                     <div class="flex-1">
                                         <span class="font-bold text-lg text-blue-700" x-text="drink.name"></span>
-                                        <span class="block px-3 py-1 mt-1 w-fit rounded-full bg-blue-100 text-blue-800 text-xs font-semibold"
+                                        <span x-show="!exactMatch" class="block px-3 py-1 mt-1 w-fit rounded-full bg-blue-100 text-blue-800 text-xs font-semibold"
                                               x-text="(drink.similarity * 100).toFixed(1) + '% Match'"></span>
                                     </div>
                                     <button @click="toggleBookmark(drink)" 
@@ -121,7 +207,7 @@
                                     </button>
                                 </div>
 
-                                <div x-show="drink.ingredient_matches && drink.ingredient_matches.length > 0" class="mb-4">
+                                <div x-show="!exactMatch && drink.ingredient_matches && drink.ingredient_matches.length > 0" class="mb-4">
                                     <div class="flex flex-wrap gap-2">
                                         <template x-for="match in drink.ingredient_matches" :key="match.user_ingredient + match.matched_ingredient">
                                             <div x-show="match.score < 100" class="flex items-center text-xs p-2 rounded-md bg-gray-200">
@@ -148,7 +234,7 @@
                             </div>
                         </template>
                     </div>
-                {% endif %}
+                </div>
                 </div>
             </div>
 

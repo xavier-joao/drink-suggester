@@ -1,5 +1,7 @@
 Flask
+Flask-SQLAlchemy
 pandas
 scikit-learn
 fuzzywuzzy
 python-Levenshtein
+rapidfuzz

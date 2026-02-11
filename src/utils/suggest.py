@@ -54,9 +54,36 @@ def flavor_probabilities(ingredients):
         return {flavor: 0.0 for flavor in FLAVOR_MAP}
     return {flavor: round(count / total, 3) for flavor, count in flavor_counts.items()}
 
+def get_drinks_dataframe():
+    """Get drinks DataFrame from database."""
+    from src.models import Drink
+    try:
+        drinks = Drink.query.all()
+        if not drinks:
+            logger.warning("No drinks found in database")
+            return pd.DataFrame(columns=['name', 'ingredients'])
+        data = []
+        for drink in drinks:
+            data.append({
+                'name': drink.name,
+                'ingredients': drink.ingredients
+            })
+        return pd.DataFrame(data)
+    except Exception as e:
+        logger.error(f"Error querying database: {e}")
+        return pd.DataFrame(columns=['name', 'ingredients'])
+
 def train_classifier():
-    db_path = os.path.join(script_dir, '..', 'database', 'drinks_list.csv')
-    drinks_df = pd.read_csv(db_path)
+    drinks_df = get_drinks_dataframe()
+    
+    if drinks_df.empty:
+        logger.warning("Empty drinks DataFrame, cannot train classifier")
+        # Return dummy classifier for empty database
+        from sklearn.pipeline import Pipeline
+        clf = LogisticRegression(max_iter=1000)
+        vectorizer = CountVectorizer(tokenizer=lambda x: x.split(', '), token_pattern=None)
+        return clf, vectorizer, drinks_df, []
+    
     positives = drinks_df['ingredients'].tolist()
     negatives = generate_negative_samples(drinks_df, n_samples=len(positives))
     X = positives + negatives
@@ -68,19 +95,27 @@ def train_classifier():
     all_ingredients_vocab = list(vectorizer.vocabulary_.keys())
     return clf, vectorizer, drinks_df, all_ingredients_vocab
 
-@lru_cache(maxsize=1)
 def get_classifier():
     return train_classifier()
 
 def autocorrect_ingredients(ingredients, vocab, threshold=65):
     norm_ingredients = normalize_ingredients(ingredients)
     corrected_ingredients = []
+    
+    if not vocab:
+        logger.warning("Empty vocabulary, returning normalized ingredients")
+        return norm_ingredients
+    
     for ing in norm_ingredients:
-        best_match, score, _ = process.extractOne(ing, vocab, scorer=fuzz.WRatio)
-        if score >= threshold:
-            corrected_ingredients.append(best_match)
-        else:
+        result = process.extractOne(ing, vocab, scorer=fuzz.WRatio)
+        if result is None:
             corrected_ingredients.append(ing)
+        else:
+            best_match, score, _ = result
+            if score >= threshold:
+                corrected_ingredients.append(best_match)
+            else:
+                corrected_ingredients.append(ing)
     return corrected_ingredients
 
 def _get_custom_score(str1, str2):
@@ -141,8 +176,12 @@ def predict_drink(ingredients, clf, vectorizer):
     user_ingredients_str = ', '.join(sorted(norm_ingredients))
     if not user_ingredients_str:
         return 0.0
-    user_vec = vectorizer.transform([user_ingredients_str])
-    return clf.predict_proba(user_vec)[0][1]
+    try:
+        user_vec = vectorizer.transform([user_ingredients_str])
+        return clf.predict_proba(user_vec)[0][1]
+    except Exception as e:
+        logger.warning(f"Error predicting drink probability: {e}, returning 0.0")
+        return 0.0
 
 def get_drink_recommendations(user_ingredients):
     clf, vectorizer, drinks_df, vocab = get_classifier()
@@ -164,13 +203,82 @@ def get_drink_recommendations(user_ingredients):
         'similar_drinks': results
     }
 
+def get_exact_match_drinks(user_ingredients):
+    """Find drinks using ONLY your available ingredients.
+    
+    Shows:
+    - Drinks using ALL your ingredients (exact match, highest priority)
+    - Drinks using some of your ingredients (e.g., vodka + lime juice but no sugar syrup)
+    - Drinks using just one ingredient
+    
+    Does NOT show drinks that require ingredients you don't have.
+    """
+    norm_user_ingredients = normalize_ingredients(user_ingredients)
+    user_ing_set = set(norm_user_ingredients)
+    
+    _, _, drinks_df, _ = get_classifier()
+    
+    if drinks_df.empty:
+        return {
+            'probability': 0.0,
+            'similar_drinks': []
+        }
+    
+    exact_matches = []
+    
+    for index, row in drinks_df.iterrows():
+        drink_ingredients = row['ingredients'].split(', ')
+        norm_drink_ingredients = normalize_ingredients(drink_ingredients)
+        drink_ing_set = set(norm_drink_ingredients)
+        
+        # Check if drink uses ONLY ingredients from user's list
+        # (All drink ingredients must be in user's ingredients, but doesn't need all user ingredients)
+        if drink_ing_set.issubset(user_ing_set) and drink_ing_set:
+            # Calculate how many user ingredients this drink uses
+            match_count = len(drink_ing_set)  # Since it's a subset, all are from user's list
+            match_ratio = match_count / len(user_ing_set)
+            
+            exact_matches.append({
+                'name': row['name'],
+                'ingredients': drink_ingredients,
+                'similarity': round(match_ratio, 4),
+                'ingredient_matches': []
+            })
+    
+    # Sort by match ratio (descending)
+    # - Drinks using all user ingredients come first (ratio = 1.0)
+    # - Then drinks using most ingredients
+    # - Then drinks using fewer ingredients
+    exact_matches.sort(key=lambda x: x['similarity'], reverse=True)
+    
+    return {
+        'probability': 0.0,  # No probability calculation for exact matches
+        'similar_drinks': exact_matches
+    }
+
 def generate_negative_samples(drinks_df, n_samples=1000):
+    if drinks_df.empty:
+        return []
+    
     all_ingredients = list(set(ing for ing_list in drinks_df['ingredients'] for ing in ing_list.split(', ')))
+    
+    if not all_ingredients:
+        return []
+    
     negatives = set()
     existing_combinations = set(drinks_df['ingredients'])
-    while len(negatives) < n_samples:
-        n_ingredients = random.randint(2, 5)
-        sample = ', '.join(sorted(random.sample(all_ingredients, n_ingredients)))
-        if sample not in existing_combinations:
-            negatives.add(sample)
+    max_attempts = n_samples * 10  # Prevent infinite loop
+    attempts = 0
+    
+    while len(negatives) < n_samples and attempts < max_attempts:
+        attempts += 1
+        n_ingredients = min(random.randint(2, 5), len(all_ingredients))
+        try:
+            sample = ', '.join(sorted(random.sample(all_ingredients, n_ingredients)))
+            if sample not in existing_combinations:
+                negatives.add(sample)
+        except ValueError:
+            # Not enough ingredients to sample from
+            break
+    
     return list(negatives)
