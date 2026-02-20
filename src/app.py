@@ -7,7 +7,8 @@ from src.models import db, Drink
 from src.utils.suggest import (
     get_drink_recommendations,
     flavor_probabilities,
-    get_exact_match_drinks
+    get_exact_match_drinks,
+    suggest_next_ingredient
 )
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -112,6 +113,24 @@ def suggest():
         drink['flavor_profile'] = flavor_probabilities(drink['ingredients'])
 
     return jsonify(response_data)
+
+@app.route('/suggest_next', methods=['POST'])
+def suggest_next():
+    data = request.get_json()
+    ingredients = data.get('ingredients', [])
+    top_n = data.get('top_n', 5)
+
+    if not ingredients:
+        return jsonify({'error': 'No ingredients provided'}), 400
+
+    suggestions = suggest_next_ingredient(ingredients, top_n=top_n)
+
+    # Attach flavor profile for each drink inside each suggestion
+    for suggestion in suggestions:
+        for drink in suggestion.get('matching_drinks', []):
+            drink['flavor_profile'] = flavor_probabilities(drink['ingredients'])
+
+    return jsonify({'suggestions': suggestions})
 
 if __name__ == '__main__':
     init_db()

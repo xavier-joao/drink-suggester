@@ -334,6 +334,65 @@ def get_exact_match_drinks(user_ingredients):
         'similar_drinks': exact_matches
     }
 
+def suggest_next_ingredient(current_ingredients, top_n=5):
+    """Given the current ingredient list, suggest the best next ingredient to add.
+
+    For each candidate ingredient in the vocabulary (not already selected),
+    scores the combined list using the classifier and also finds which drinks
+    would match, with ingredient-level match details.
+
+    Returns a list of dicts:
+      {
+        'ingredient': str,
+        'score': float,          # classifier probability for current + candidate
+        'matching_drinks': [     # drinks that match current + candidate
+          {
+            'name': str,
+            'ingredients': [str],
+            'similarity': float,
+            'ingredient_matches': [...]
+          }
+        ]
+      }
+    """
+    clf, vectorizer, drinks_df, vocab = get_classifier()
+
+    norm_current = normalize_ingredients(current_ingredients)
+    current_set = set(norm_current)
+
+    if not vocab:
+        return []
+
+    candidates = []
+    for ingredient in vocab:
+        if ingredient in current_set:
+            continue
+
+        test_ingredients = norm_current + [ingredient]
+        score = predict_drink(test_ingredients, clf, vectorizer)
+
+        # Find which drinks would match with this new ingredient added,
+        # then keep only drinks where the candidate ingredient itself matched —
+        # otherwise drinks that only match the current ingredients would appear.
+        all_matching = _find_similar_drinks_internal(test_ingredients, drinks_df)
+        matching_drinks = [
+            d for d in all_matching
+            if any(
+                m.get('user_ingredient') == ingredient
+                for m in d.get('ingredient_matches', [])
+            )
+        ]
+
+        candidates.append({
+            'ingredient': ingredient,
+            'score': round(float(score), 4),
+            'matching_drinks': matching_drinks
+        })
+
+    candidates.sort(key=lambda x: x['score'], reverse=True)
+    return candidates[:top_n]
+
+
 def generate_negative_samples(drinks_df, n_samples=1000):
     if drinks_df.empty:
         return []
