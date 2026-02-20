@@ -35,7 +35,6 @@ def init_db():
         try:
             db.create_all()
             
-            # Check if database has drinks
             drink_count = Drink.query.count()
             if drink_count > 0:
                 logger.info(f"Database already populated with {drink_count} drinks")
@@ -62,7 +61,6 @@ def init_db():
                 _db_initialized = True
                 return
             
-            # Batch insert for better performance
             batch_size = 100
             for i in range(0, len(drinks_df), batch_size):
                 batch = drinks_df.iloc[i:i+batch_size]
@@ -103,10 +101,8 @@ def suggest():
         return jsonify({'error': 'No ingredients provided'}), 400
     
     if exact_match:
-        # Exact match mode: only show drinks with exactly these ingredients
         response_data = get_exact_match_drinks(ingredients)
     else:
-        # Fuzzy match mode: show similar drinks (default)
         response_data = get_drink_recommendations(ingredients)
 
     for drink in response_data['similar_drinks']:
@@ -125,7 +121,6 @@ def suggest_next():
 
     suggestions = suggest_next_ingredient(ingredients, top_n=top_n)
 
-    # Attach flavor profile for each drink inside each suggestion
     for suggestion in suggestions:
         for drink in suggestion.get('matching_drinks', []):
             drink['flavor_profile'] = flavor_probabilities(drink['ingredients'])

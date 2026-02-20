@@ -19,13 +19,9 @@ if not logger.handlers:
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-# Matching configuration: adjust to make results more restrictive
-# Minimum score (0-100) for an ingredient to count as a match
-MIN_INGREDIENT_SCORE = 65
-# Final similarity threshold for a drink to be returned (0.0 - 1.0)
+MIN_INGREDIENT_SCORE = 75
 FINAL_SIMILARITY_THRESHOLD = 0.5
-# Minimum score for autocorrect to be considered a real correction (0-100)
-AUTOCORRECT_MIN_SCORE = 80
+AUTOCORRECT_MIN_SCORE = 90
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 json_path = os.path.join(script_dir, '..', 'database', 'flavor_map.json')
@@ -86,7 +82,6 @@ def train_classifier():
     
     if drinks_df.empty:
         logger.warning("Empty drinks DataFrame, cannot train classifier")
-        # Return dummy classifier for empty database
         from sklearn.pipeline import Pipeline
         clf = LogisticRegression(max_iter=1000)
         vectorizer = CountVectorizer(tokenizer=lambda x: x.split(', '), token_pattern=None)
@@ -153,7 +148,6 @@ def _find_similar_drinks_internal(user_ingredients, drinks_df):
             
             if best_match:
                 matched_ingredient, score = best_match[0], best_match[1]
-                # Only count the ingredient if its match score meets the minimum threshold
                 if score >= MIN_INGREDIENT_SCORE:
                     total_score += score
                     num_matched += 1
@@ -166,11 +160,9 @@ def _find_similar_drinks_internal(user_ingredients, drinks_df):
         if not norm_user_ingredients:
             continue
 
-        # If no ingredients matched above the per-ingredient threshold, skip
         if num_matched == 0:
             continue
 
-        # Average only over matched ingredients to avoid diluting scores
         avg_score = total_score / num_matched
         match_ratio = num_matched / len(norm_user_ingredients)
         final_similarity = (avg_score / 100) * match_ratio
@@ -201,18 +193,15 @@ def predict_drink(ingredients, clf, vectorizer):
 def get_drink_recommendations(user_ingredients):
     clf, vectorizer, drinks_df, vocab = get_classifier()
 
-    # Normalize originals and compute conservative autocorrected best-guess list
     norm_user_ingredients = normalize_ingredients(user_ingredients)
     best_guess_ingredients = []
     corrections = []
 
-    # Build vocab-safe conservative corrections: only accept when score >= AUTOCORRECT_MIN_SCORE
     if vocab:
         for orig in norm_user_ingredients:
             res = process.extractOne(orig, vocab, scorer=fuzz.WRatio)
             if res:
                 match, score, _ = res
-                # Avoid suggesting a correction that duplicates another original ingredient
                 if score >= AUTOCORRECT_MIN_SCORE and match != orig and match not in norm_user_ingredients:
                     best_guess_ingredients.append(match)
                     corrections.append({'original': orig, 'corrected': match, 'score': int(score)})
@@ -226,44 +215,34 @@ def get_drink_recommendations(user_ingredients):
     logger.info(f"PROB CHECK: Using best-guess list for probability: {best_guess_ingredients}")
     final_prob = predict_drink(best_guess_ingredients, clf, vectorizer)
 
-    # First try search with the user's original ingredients
     results = _find_similar_drinks_internal(norm_user_ingredients, drinks_df)
 
-    # If we have conservative corrections, compute corrected results as well to merge labels
     results_corrected = []
     if corrections:
         results_corrected = _find_similar_drinks_internal(best_guess_ingredients, drinks_df)
 
-        # Build a map of drink name -> corrected ingredient_matches for quick lookup
         corrected_map = {r['name']: r.get('ingredient_matches', []) for r in results_corrected}
 
-        # Merge corrected labels into the original results so UI shows autocorrected user ingredients
         for res in results:
             corr_list = corrected_map.get(res['name'], [])
-            # Update any existing match user_ingredient from original -> corrected (store original)
             for corr in corrections:
                 orig = corr['original']
                 corr_val = corr['corrected']
                 for m in res.get('ingredient_matches', []):
                     if m.get('user_ingredient') == orig:
-                        # preserve original input, set display to corrected
                         m['original_user_ingredient'] = orig
                         m['user_ingredient'] = corr_val
 
-                # If original had no match but corrected search found one, append it (mark original if possible)
                 for m in corr_list:
                     if m.get('user_ingredient') == corr_val:
                         exists = any((mm.get('matched_ingredient') == m.get('matched_ingredient') and mm.get('user_ingredient') == m.get('user_ingredient')) for mm in res.get('ingredient_matches', []))
                         if not exists:
-                            # attach original input if available
                             appended = m.copy()
                             appended['original_user_ingredient'] = orig
                             res.setdefault('ingredient_matches', []).append(appended)
 
-    # If nothing found from original search, fall back to corrected results entirely
     if not results and results_corrected:
         logger.info("Direct search failed. Falling back to search using autocorrected ingredients.")
-        # Map back user_ingredient labels from corrected search to original positions if possible
         for res in results_corrected:
             for match in res.get('ingredient_matches', []):
                 try:
@@ -308,12 +287,8 @@ def get_exact_match_drinks(user_ingredients):
         drink_ingredients = row['ingredients'].split(', ')
         norm_drink_ingredients = normalize_ingredients(drink_ingredients)
         drink_ing_set = set(norm_drink_ingredients)
-        
-        # Check if drink uses ONLY ingredients from user's list
-        # (All drink ingredients must be in user's ingredients, but doesn't need all user ingredients)
         if drink_ing_set.issubset(user_ing_set) and drink_ing_set:
-            # Calculate how many user ingredients this drink uses
-            match_count = len(drink_ing_set)  # Since it's a subset, all are from user's list
+            match_count = len(drink_ing_set)
             match_ratio = match_count / len(user_ing_set)
             
             exact_matches.append({
@@ -323,10 +298,6 @@ def get_exact_match_drinks(user_ingredients):
                 'ingredient_matches': []
             })
     
-    # Sort by match ratio (descending)
-    # - Drinks using all user ingredients come first (ratio = 1.0)
-    # - Then drinks using most ingredients
-    # - Then drinks using fewer ingredients
     exact_matches.sort(key=lambda x: x['similarity'], reverse=True)
     
     return {
@@ -363,6 +334,9 @@ def suggest_next_ingredient(current_ingredients, top_n=5):
     if not vocab:
         return []
 
+    current_matches = _find_similar_drinks_internal(norm_current, drinks_df)
+    current_match_names = {d['name'] for d in current_matches}
+
     candidates = []
     for ingredient in vocab:
         if ingredient in current_set:
@@ -371,13 +345,13 @@ def suggest_next_ingredient(current_ingredients, top_n=5):
         test_ingredients = norm_current + [ingredient]
         score = predict_drink(test_ingredients, clf, vectorizer)
 
-        # Find which drinks would match with this new ingredient added,
-        # then keep only drinks where the candidate ingredient itself matched —
-        # otherwise drinks that only match the current ingredients would appear.
+        # Among drinks that already match the current ingredients,
+        # keep only those that also fuzzy-match the candidate ingredient.
         all_matching = _find_similar_drinks_internal(test_ingredients, drinks_df)
         matching_drinks = [
             d for d in all_matching
-            if any(
+            if d['name'] in current_match_names
+            and any(
                 m.get('user_ingredient') == ingredient
                 for m in d.get('ingredient_matches', [])
             )
@@ -389,6 +363,10 @@ def suggest_next_ingredient(current_ingredients, top_n=5):
             'matching_drinks': matching_drinks
         })
 
+    # Only return candidates that have real matching drinks — the ML score alone
+    # can rank ingredients highly even when no actual drink in the database
+    # combines them with the user's current selection.
+    candidates = [c for c in candidates if c['matching_drinks']]
     candidates.sort(key=lambda x: x['score'], reverse=True)
     return candidates[:top_n]
 

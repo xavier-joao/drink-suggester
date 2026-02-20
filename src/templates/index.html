@@ -43,6 +43,8 @@
                         this.ingredientTags.push(ingredient.toLowerCase());
                     }
                     input.value = '';
+                    this.nextSuggestions = [];
+                    this.expandedSuggestion = null;
                     // Automatically search after adding a tag
                     try {
                         this.searchDrinks();
@@ -53,6 +55,8 @@
             },
             removeIngredientTag(index) {
                 this.ingredientTags.splice(index, 1);
+                this.nextSuggestions = [];
+                this.expandedSuggestion = null;
                 // Clear autocorrect suggestions when no tags remain
                 if (this.ingredientTags.length === 0) {
                     this.corrections = [];
@@ -194,7 +198,6 @@
                             placeholder="e.g. vodka, lime juice">
                     </div>
 
-                    <!-- Correction suggestions (autocorrect mapping) -->
                     <div x-show="corrections.length > 0" class="mt-2">
                         <p class="text-sm text-gray-600 mb-1">Did you mean:</p>
                         <div class="flex flex-wrap gap-2">
@@ -219,7 +222,6 @@
                         </div>
                     </div>
 
-                    <!-- Ingredient Tags -->
                     <div x-show="ingredientTags.length > 0" class="mt-3 flex flex-wrap gap-2">
                         <template x-for="(tag, index) in ingredientTags" :key="index">
                             <span
@@ -256,8 +258,7 @@
                     </div>
                 </form>
 
-                <!-- Next Ingredient Suggestions Panel -->
-                <div x-show="nextSuggestions.length > 0" x-cloak class="mb-6">
+                <div x-show="nextSuggestions.length > 0" class="mb-6">
                     <hr class="my-4 border-t border-gray-200">
                     <div class="flex items-center justify-between mb-3">
                         <h5 class="text-lg font-bold text-gray-800">✨ Suggested Next Ingredients</h5>
@@ -275,26 +276,36 @@
                         <template x-for="(suggestion, index) in nextSuggestions" :key="index">
                             <div class="rounded-lg border border-emerald-200 bg-emerald-50 overflow-hidden">
                                 <!-- Suggestion header (always visible) -->
-                                <button type="button" @click="toggleSuggestion(index)"
-                                    class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-emerald-100 transition-colors">
-                                    <div class="flex items-center gap-3">
-                                        <span class="font-semibold text-emerald-900 capitalize"
+                                <div class="w-full flex items-center justify-between px-4 py-3">
+                                    <!-- Left: ingredient name — click to add to search -->
+                                    <button type="button"
+                                        @click="if (!ingredientTags.includes(suggestion.ingredient)) { ingredientTags.push(suggestion.ingredient); nextSuggestions = []; expandedSuggestion = null; searchDrinks(); }"
+                                        class="flex items-center gap-2 group text-left" title="Add to search">
+                                        <span
+                                            class="font-semibold text-emerald-900 capitalize group-hover:text-emerald-600 transition-colors"
                                             x-text="suggestion.ingredient"></span>
+                                        <span
+                                            class="opacity-0 group-hover:opacity-100 transition-opacity text-emerald-600 text-xs font-bold">＋</span>
+                                    </button>
+                                    <!-- Right: score badges + chevron toggle -->
+                                    <button type="button" @click="toggleSuggestion(index)"
+                                        class="flex items-center gap-3 hover:bg-emerald-100 rounded-md px-2 py-1 transition-colors"
+                                        title="Show matching drinks">
                                         <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="{
                                                 'bg-green-200 text-green-800': suggestion.score >= 0.7,
                                                 'bg-yellow-200 text-yellow-800': suggestion.score >= 0.4 && suggestion.score < 0.7,
                                                 'bg-red-200 text-red-800': suggestion.score < 0.4
                                               }" x-text="Math.round(suggestion.score * 100) + '% score'"></span>
                                         <span class="text-xs text-emerald-700"
-                                            x-text="suggestion.matching_drinks.length + ' drink(s) matched'"></span>
-                                    </div>
-                                    <svg class="w-4 h-4 text-emerald-700 transition-transform"
-                                        :class="expandedSuggestion === index ? 'rotate-180' : ''" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
+                                            x-text="suggestion.matching_drinks.length + ' drink(s)'"></span>
+                                        <svg class="w-4 h-4 text-emerald-700 transition-transform"
+                                            :class="expandedSuggestion === index ? 'rotate-180' : ''" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                </div>
 
                                 <!-- Expandable drink list -->
                                 <div x-show="expandedSuggestion === index" x-cloak
