@@ -259,7 +259,18 @@
                 <!-- Next Ingredient Suggestions Panel -->
                 <div x-show="nextSuggestions.length > 0" x-cloak class="mb-6">
                     <hr class="my-4 border-t border-gray-200">
-                    <h5 class="text-lg font-bold text-gray-800 mb-3">✨ Suggested Next Ingredients</h5>
+                    <div class="flex items-center justify-between mb-3">
+                        <h5 class="text-lg font-bold text-gray-800">✨ Suggested Next Ingredients</h5>
+                        <button type="button" @click="nextSuggestions = []; expandedSuggestion = null"
+                            class="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                            title="Close suggestions">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
                     <div class="space-y-2">
                         <template x-for="(suggestion, index) in nextSuggestions" :key="index">
                             <div class="rounded-lg border border-emerald-200 bg-emerald-50 overflow-hidden">
@@ -457,7 +468,8 @@
                                     </div>
 
                                     <p class="text-gray-600 text-sm"><span class="font-semibold">Ingredients:</span>
-                                        <span x-text="drink.ingredients.join(', ')"></span></p>
+                                        <span x-text="drink.ingredients.join(', ')"></span>
+                                    </p>
                                 </div>
                             </template>
                         </div>
