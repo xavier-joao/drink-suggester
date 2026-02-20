@@ -197,12 +197,24 @@ def get_drink_recommendations(user_ingredients):
     best_guess_ingredients = []
     corrections = []
 
+    vocab_set = set(vocab) if vocab else set()
+
     if vocab:
         for orig in norm_user_ingredients:
+            if orig in vocab_set:
+                best_guess_ingredients.append(orig)
+                continue
+
             res = process.extractOne(orig, vocab, scorer=fuzz.WRatio)
             if res:
                 match, score, _ = res
-                if score >= AUTOCORRECT_MIN_SCORE and match != orig and match not in norm_user_ingredients:
+                # Reject corrections where one term is a substring of the other
+                # (e.g. "apple juice" → "pineapple juice", "lime" → "lime juice")
+                is_substring = orig in match or match in orig
+                if (score >= AUTOCORRECT_MIN_SCORE
+                        and match != orig
+                        and match not in norm_user_ingredients
+                        and not is_substring):
                     best_guess_ingredients.append(match)
                     corrections.append({'original': orig, 'corrected': match, 'score': int(score)})
                 else:
