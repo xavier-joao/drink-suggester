@@ -1,158 +1,245 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drink Suggester</title>
+    <title>biritAI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
     <style>
-        [x-cloak] {
-            display: none !important;
+        [x-cloak] { display: none !important; }
+
+        :root {
+            --cream: #F5EED8;
+            --cream-dim: #E8DFC4;
+            --amber: #C8922A;
+            --amber-light: #E8B84B;
+            --ink: #1A1612;
+            --ink-mid: #2E2820;
+            --ink-soft: #4A4239;
+            --muted: #7A6E5F;
+            --surface: #231E17;
+            --surface-raised: #2E2820;
+            --border: rgba(200, 146, 42, 0.2);
+            --border-strong: rgba(200, 146, 42, 0.5);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--ink);
+            background-image:
+                radial-gradient(ellipse 80% 60% at 50% -10%, rgba(200, 146, 42, 0.12) 0%, transparent 70%);
+            min-height: 100vh;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--cream);
+        }
+
+        .display-font { font-family: 'Cormorant Garamond', Georgia, serif; }
+
+        /* Card */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+        .card-raised {
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        /* Tab nav */
+        .tab-link {
+            position: relative;
+            padding: 14px 4px;
+            font-size: 13px;
+            font-weight: 400;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+            transition: color 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            user-select: none;
+        }
+        .tab-link::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0; right: 0;
+            height: 1px;
+            background: var(--amber);
+            transform: scaleX(0);
+            transition: transform 0.25s ease;
+        }
+        .tab-link.active { color: var(--cream); }
+        .tab-link.active::after { transform: scaleX(1); }
+        .tab-link:hover:not(.active) { color: var(--cream-dim); }
+
+        /* Badge pill */
+        .pill {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+        }
+        .pill-amber { background: rgba(200, 146, 42, 0.18); color: var(--amber-light); border: 1px solid rgba(200, 146, 42, 0.35); }
+        .pill-green { background: rgba(80, 160, 100, 0.15); color: #7DD4A0; border: 1px solid rgba(80, 160, 100, 0.3); }
+        .pill-red   { background: rgba(200, 80, 60, 0.15);  color: #F08070; border: 1px solid rgba(200, 80, 60, 0.3); }
+        .pill-yellow{ background: rgba(220, 180, 60, 0.15); color: #D4B84A; border: 1px solid rgba(220, 180, 60, 0.3); }
+        .pill-muted { background: rgba(255,255,255,0.06); color: var(--muted); border: 1px solid rgba(255,255,255,0.1); }
+
+        /* Input */
+        .drink-input {
+            width: 100%;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 13px 18px;
+            font-size: 15px;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--cream);
+            outline: none;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .drink-input::placeholder { color: var(--muted); }
+        .drink-input:focus {
+            border-color: var(--amber);
+            background: rgba(255,255,255,0.06);
+        }
+
+        /* Submit button */
+        .btn-primary {
+            width: 100%;
+            padding: 13px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            background: var(--amber);
+            color: var(--ink);
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn-primary:hover { background: var(--amber-light); }
+        .btn-primary:active { transform: scale(0.99); }
+
+        /* Drink result card */
+        .drink-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 22px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .drink-card:hover {
+            border-color: var(--border-strong);
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* Bookmark button */
+        .bookmark-btn {
+            background: none;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 7px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            color: var(--muted);
+            line-height: 0;
+        }
+        .bookmark-btn:hover {
+            border-color: var(--border);
+            background: rgba(255,255,255,0.05);
+            color: var(--cream);
+        }
+        .bookmark-btn.saved { color: var(--amber); }
+
+        /* Ingredient match chip */
+        .match-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            padding: 5px 10px;
+            border-radius: 7px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: var(--cream-dim);
+        }
+
+        /* Divider */
+        .divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 28px 0;
+        }
+
+        /* Probability badge */
+        .prob-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+        }
+        .prob-badge .dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+
+        /* Empty state */
+        .empty-state {
+            padding: 48px 24px;
+            text-align: center;
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+        }
+
+        /* Bookmark count badge */
+        .count-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            font-size: 10px;
+            font-weight: 500;
+            background: rgba(200, 146, 42, 0.25);
+            color: var(--amber-light);
+            margin-left: 6px;
         }
     </style>
 </head>
+<body>
 
-<body class="bg-gray-100 min-h-screen flex items-center justify-center font-sans">
-
-    <div x-data="{
+    <div
+        x-data="{
             tab: 'search',
             bookmarks: [],
             searchResults: [],
-            probability: null,
-            searched_ingredients: [],
-            ingredientTags: [],
-            best_guess: [],
-            corrections: [],
-            loading: false,
-            loadingNext: false,
-            exactMatch: false,
-            nextSuggestions: [],
-            expandedSuggestion: null,
             init() {
                 const saved = localStorage.getItem('drinkBookmarks_v2');
                 this.bookmarks = saved ? JSON.parse(saved) : [];
-            },
-            addIngredientTag(e) {
-                if (e.key === 'Enter' || e.key === ',') {
-                    e.preventDefault();
-                    const input = e.target;
-                    const ingredient = input.value.trim();
-                    if (ingredient && !this.ingredientTags.includes(ingredient.toLowerCase())) {
-                        this.ingredientTags.push(ingredient.toLowerCase());
-                    }
-                    input.value = '';
-                    this.nextSuggestions = [];
-                    this.expandedSuggestion = null;
-                    // Automatically search after adding a tag
-                    try {
-                        this.searchDrinks();
-                    } catch (err) {
-                        console.error('Auto-search failed:', err);
-                    }
+                if (window.drinkResultsData) {
+                    this.searchResults = window.drinkResultsData;
                 }
-            },
-            removeIngredientTag(index) {
-                this.ingredientTags.splice(index, 1);
-                this.nextSuggestions = [];
-                this.expandedSuggestion = null;
-                // Clear autocorrect suggestions when no tags remain
-                if (this.ingredientTags.length === 0) {
-                    this.corrections = [];
-                    this.best_guess = [];
-                    this.searchResults = [];
-                    this.probability = null;
-                } else {
-                    // Auto-run search after removing a tag
-                    try {
-                        this.searchDrinks();
-                    } catch (err) {
-                        console.error('Auto-search on remove failed:', err);
-                    }
-                }
-            },
-            async searchDrinks(e) {
-                if (e && e.preventDefault) e.preventDefault();
-                
-                // If there's text in the input, convert it to a tag before searching
-                try {
-                    const inputEl = document.getElementById('ingredients');
-                    const inputVal = inputEl ? inputEl.value.trim() : '';
-                    if (inputVal) {
-                        const lower = inputVal.toLowerCase();
-                        if (!this.ingredientTags.includes(lower)) {
-                            this.ingredientTags.push(lower);
-                        }
-                        if (inputEl) inputEl.value = '';
-                    }
-                } catch (err) {
-                    console.warn('Error reading input field:', err);
-                }
-
-                if (!this.ingredientTags.length) {
-                    alert('Please add at least one ingredient');
-                    return;
-                }
-                
-                this.loading = true;
-                try {
-                    const response = await fetch('/suggest', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ 
-                            ingredients: this.ingredientTags, 
-                            exact_match: this.exactMatch 
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to get suggestions');
-                    }
-                    
-                    const data = await response.json();
-                    console.log('suggest /response', data);
-                    this.probability = data.probability;
-                    this.searchResults = data.similar_drinks;
-                    this.best_guess = data.best_guess || [];
-                    this.corrections = data.corrections || [];
-                    this.searched_ingredients = this.ingredientTags;
-                    window.drinkResultsData = data.similar_drinks;
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Error fetching suggestions');
-                } finally {
-                    this.loading = false;
-                }
-            },
-            async suggestNextIngredient() {
-                if (!this.ingredientTags.length) {
-                    alert('Please add at least one ingredient first');
-                    return;
-                }
-                this.loadingNext = true;
-                this.nextSuggestions = [];
-                this.expandedSuggestion = null;
-                try {
-                    const response = await fetch('/suggest_next', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ingredients: this.ingredientTags, top_n: 5 })
-                    });
-                    if (!response.ok) throw new Error('Failed to get next ingredient suggestions');
-                    const data = await response.json();
-                    this.nextSuggestions = data.suggestions || [];
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Error fetching next ingredient suggestions');
-                } finally {
-                    this.loadingNext = false;
-                }
-            },
-            toggleSuggestion(index) {
-                this.expandedSuggestion = this.expandedSuggestion === index ? null : index;
             },
             toggleBookmark(drink) {
                 if (!drink || !drink.name) return;
@@ -167,375 +254,181 @@
             isBookmarked(drinkName) {
                 return this.bookmarks.some(b => b.name === drinkName);
             }
-        }" x-init="init()" class="w-full max-w-2xl mx-auto py-8 px-4">
-        <div class="bg-white rounded-lg shadow-lg p-8">
-            <h1 class="text-3xl font-bold text-center mb-4 text-gray-800">Drink Suggester</h1>
+        }"
+        x-init="init()"
+        class="w-full max-w-xl mx-auto py-12 px-4"
+    >
 
-            <div class="border-b border-gray-200 mb-6">
-                <nav class="-mb-px flex space-x-6" aria-label="Tabs">
-                    <a href="#" @click.prevent="tab = 'search'"
-                        :class="tab === 'search' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
-                        Suggest Drinks
-                    </a>
-                    <a href="#" @click.prevent="tab = 'bookmarks'"
-                        :class="tab === 'bookmarks' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
-                        My Bookmarks
-                        <span x-show="bookmarks.length > 0" x-text="bookmarks.length"
-                            class="ml-2 inline-block py-0.5 px-2 rounded-full text-xs font-medium bg-blue-100 text-blue-600"></span>
-                    </a>
-                </nav>
+        <!-- Header -->
+        <div class="text-center mb-10">
+<h1 class="display-font text-5xl font-semibold" style="color: var(--cream); line-height: 1.1;">birit<span style="color: var(--amber);">AI</span></h1>
+            <p class="mt-3 text-sm" style="color: var(--muted);">Enter what you have. We'll find what to make.</p>
+        </div>
+
+        <!-- Main card -->
+        <div class="card" style="padding: 32px 36px;">
+
+            <!-- Tab Nav -->
+            <div class="flex gap-8 mb-8" style="border-bottom: 1px solid var(--border);">
+                <a @click.prevent="tab = 'search'"
+                   :class="tab === 'search' ? 'active' : ''"
+                   class="tab-link">
+                    Suggest
+                </a>
+                <a @click.prevent="tab = 'bookmarks'"
+                   :class="tab === 'bookmarks' ? 'active' : ''"
+                   class="tab-link" style="display:flex; align-items:center;">
+                    Saved
+                    <span x-show="bookmarks.length > 0" x-text="bookmarks.length" class="count-badge"></span>
+                </a>
             </div>
 
+            <!-- Search Tab -->
             <div x-show="tab === 'search'" x-cloak>
-                <form @submit="searchDrinks" class="mb-6">
-                    <label for="ingredients" class="block mb-2 font-medium text-gray-700">Ingredients (type and press
-                        Enter or comma):</label>
-                    <div class="relative">
-                        <input type="text" id="ingredients" name="ingredients" @keydown="addIngredientTag"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                            placeholder="e.g. vodka, lime juice">
-                    </div>
 
-                    <div x-show="corrections.length > 0" class="mt-2">
-                        <p class="text-sm text-gray-600 mb-1">Did you mean:</p>
-                        <div class="flex flex-wrap gap-2">
-                            <template x-for="(c, i) in corrections" :key="i">
-                                <button type="button" @click="ingredientTags = best_guess; searchDrinks()"
-                                    class="inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-                                    <span x-text="c.original"></span>
-                                    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 5l7 7-7 7" />
-                                    </svg>
-                                    <span x-text="c.corrected"></span>
-                                </button>
-                            </template>
-                            <template x-if="corrections.length > 0">
-                                <button type="button" @click="ingredientTags = best_guess; searchDrinks()"
-                                    class="inline-flex items-center gap-2 px-3 py-1 bg-yellow-200 text-yellow-900 rounded-full text-sm font-semibold">
-                                    Apply all corrections
-                                </button>
-                            </template>
-                        </div>
-                    </div>
-
-                    <div x-show="ingredientTags.length > 0" class="mt-3 flex flex-wrap gap-2">
-                        <template x-for="(tag, index) in ingredientTags" :key="index">
-                            <span
-                                class="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                                <span x-text="tag"></span>
-                                <button type="button" @click="removeIngredientTag(index)"
-                                    class="text-blue-500 hover:text-blue-700 font-bold cursor-pointer">
-                                    ×
-                                </button>
-                            </span>
-                        </template>
-                    </div>
-
-                    <div class="mt-4 flex items-center">
-                        <label class="flex items-center cursor-pointer">
-                            <input type="checkbox" x-model="exactMatch" @change="searchDrinks()"
-                                class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
-                            <span class="ml-2 text-sm font-medium text-gray-700">Exact Match Only (drinks with ONLY
-                                these ingredients)</span>
-                        </label>
-                    </div>
-
-                    <div class="mt-4 flex gap-3">
-                        <button type="submit" :disabled="loading"
-                            class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
-                            <span x-show="!loading">Suggest Drinks</span>
-                            <span x-show="loading">Loading...</span>
-                        </button>
-                        <button type="button" @click.prevent="suggestNextIngredient()" :disabled="loadingNext"
-                            class="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
-                            <span x-show="!loadingNext">✨ What to Add Next?</span>
-                            <span x-show="loadingNext">Thinking...</span>
-                        </button>
-                    </div>
+                <form method="post" action="/" class="mb-2">
+                    <label for="ingredients" class="block mb-2 text-xs tracking-widest uppercase" style="color: var(--muted);">Your ingredients</label>
+                    <input
+                        type="text"
+                        id="ingredients"
+                        name="ingredients"
+                        class="drink-input"
+                        placeholder="vodka, lime juice, ginger beer…"
+                        value="{{ result.searched_ingredients|join(', ') if result else '' }}"
+                    >
+                    <button type="submit" class="btn-primary mt-4">Find Drinks</button>
                 </form>
 
-                <div x-show="nextSuggestions.length > 0" class="mb-6">
-                    <hr class="my-4 border-t border-gray-200">
-                    <div class="flex items-center justify-between mb-3">
-                        <h5 class="text-lg font-bold text-gray-800">✨ Suggested Next Ingredients</h5>
-                        <button type="button" @click="nextSuggestions = []; expandedSuggestion = null"
-                            class="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                            title="Close suggestions">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
+                <div id="drink-results-container">
+                {% if result %}
+                    {% if result.similar_drinks %}
+                    <script>
+                        window.drinkResultsData = {{ result.similar_drinks|tojson|safe }};
+                    </script>
+                    {% endif %}
+
+                    <hr class="divider">
+
+                    <!-- Cocktail probability -->
+                    <div class="mb-6">
+                        <p class="text-xs tracking-widest uppercase mb-3" style="color: var(--muted);">Cocktail likelihood</p>
+                        {% if result.probability < 0.5 %}
+                            <div class="prob-badge" style="background: rgba(200,80,60,0.1); border: 1px solid rgba(200,80,60,0.25);">
+                                <span class="dot" style="background: #F08070;"></span>
+                                <span style="color: #F08070; font-weight:500;">{{ (result.probability * 100) | round }}%</span>
+                                <span style="color: var(--muted); font-size:12px;">— unlikely to be a known cocktail</span>
+                            </div>
+                        {% else %}
+                            <div class="prob-badge" style="background: rgba(80,160,100,0.1); border: 1px solid rgba(80,160,100,0.25);">
+                                <span class="dot" style="background: #7DD4A0;"></span>
+                                <span style="color: #7DD4A0; font-weight:500;">{{ (result.probability * 100) | round }}%</span>
+                                <span style="color: var(--muted); font-size:12px;">— likely a recognisable cocktail</span>
+                            </div>
+                        {% endif %}
                     </div>
-                    <div class="space-y-2">
-                        <template x-for="(suggestion, index) in nextSuggestions" :key="index">
-                            <div class="rounded-lg border border-emerald-200 bg-emerald-50 overflow-hidden">
-                                <div class="w-full flex items-center justify-between px-4 py-3">
-                                    <button type="button"
-                                        @click="if (!ingredientTags.includes(suggestion.ingredient)) { ingredientTags.push(suggestion.ingredient); nextSuggestions = []; expandedSuggestion = null; searchDrinks(); }"
-                                        class="flex items-center gap-2 group text-left" title="Add to search">
-                                        <span
-                                            class="font-semibold text-emerald-900 capitalize group-hover:text-emerald-600 transition-colors"
-                                            x-text="suggestion.ingredient"></span>
-                                        <span
-                                            class="opacity-0 group-hover:opacity-100 transition-opacity text-emerald-600 text-xs font-bold">＋</span>
-                                    </button>
-                                    <button type="button" @click="toggleSuggestion(index)"
-                                        class="flex items-center gap-3 hover:bg-emerald-100 rounded-md px-2 py-1 transition-colors"
-                                        title="Show matching drinks">
-                                        <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="{
-                                                'bg-green-200 text-green-800': suggestion.score >= 0.7,
-                                                'bg-yellow-200 text-yellow-800': suggestion.score >= 0.4 && suggestion.score < 0.7,
-                                                'bg-red-200 text-red-800': suggestion.score < 0.4
-                                              }" x-text="Math.round(suggestion.score * 100) + '% score'"></span>
-                                        <span class="text-xs text-emerald-700"
-                                            x-text="suggestion.matching_drinks.length + ' drink(s)'"></span>
-                                        <svg class="w-4 h-4 text-emerald-700 transition-transform"
-                                            :class="expandedSuggestion === index ? 'rotate-180' : ''" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 9l-7 7-7-7" />
+
+                    <!-- Suggested drinks header -->
+                    <p class="display-font text-2xl mb-5" style="color: var(--cream);">
+                        Suggested drinks
+                    </p>
+
+                    <div class="space-y-3" id="drink-list">
+                        <template x-for="(drink, index) in searchResults" :key="index">
+                            <div class="drink-card">
+
+                                <!-- Top row: name + match + bookmark -->
+                                <div class="flex items-start justify-between mb-3">
+                                    <div>
+                                        <p class="display-font text-xl font-semibold" style="color: var(--cream); line-height:1.2;" x-text="drink.name"></p>
+                                        <span class="pill pill-amber mt-1.5" x-text="(drink.similarity * 100).toFixed(1) + '% match'"></span>
+                                    </div>
+                                    <button
+                                        @click="toggleBookmark(drink)"
+                                        title="Save drink"
+                                        :class="isBookmarked(drink.name) ? 'bookmark-btn saved' : 'bookmark-btn'"
+                                    >
+                                        <svg x-show="!isBookmarked(drink.name)" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                                        </svg>
+                                        <svg x-show="isBookmarked(drink.name)" x-cloak width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                                         </svg>
                                     </button>
                                 </div>
 
-                                <div x-show="expandedSuggestion === index" x-cloak
-                                    class="border-t border-emerald-200 divide-y divide-emerald-100">
-                                    <template x-for="(drink, di) in suggestion.matching_drinks" :key="di">
-                                        <div class="px-4 py-3 bg-white">
-                                            <div class="flex items-center justify-between mb-2">
-                                                <span class="font-semibold text-blue-700" x-text="drink.name"></span>
-                                                <span
-                                                    class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold"
-                                                    x-text="(drink.similarity * 100).toFixed(1) + '% match'"></span>
-                                            </div>
-                                            <div x-show="drink.ingredient_matches && drink.ingredient_matches.length > 0"
-                                                class="flex flex-wrap gap-2 mb-2">
-                                                <template x-for="match in drink.ingredient_matches"
-                                                    :key="match.user_ingredient + match.matched_ingredient">
-                                                    <div x-show="match.score >= 100"
-                                                        class="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-green-100 border border-green-300 text-green-800 font-semibold">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3"
-                                                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="3" d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                        <span x-text="match.matched_ingredient"></span>
-                                                    </div>
-                                                    <div x-show="match.score < 100"
-                                                        class="flex items-center text-xs p-1.5 rounded-md bg-gray-100">
-                                                        <span x-show="match.original_user_ingredient"
-                                                            class="mr-1.5 px-1.5 py-0.5 rounded-full bg-orange-100 border border-orange-300 text-orange-700 font-semibold text-xs"
-                                                            x-text="'✏ ' + match.original_user_ingredient"></span>
-                                                        <span class="font-medium text-gray-800"
-                                                            x-text="match.user_ingredient"></span>
-                                                        <svg xmlns="http://www.w3.org/2000/svg"
-                                                            class="h-3 w-3 mx-1.5 text-gray-400" fill="none"
-                                                            viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                                        </svg>
-                                                        <span class="text-gray-600"
-                                                            x-text="match.matched_ingredient"></span>
-                                                        <span class="ml-2 px-1.5 py-0.5 rounded-full text-xs font-bold"
-                                                            :class="{
-                                                                'bg-green-200 text-green-800': match.score > 85,
-                                                                'bg-yellow-200 text-yellow-800': match.score > 70 && match.score <= 85,
-                                                                'bg-red-200 text-red-800': match.score <= 70
-                                                              }" x-text="Math.round(match.score) + '%'"></span>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                            <p class="text-gray-500 text-xs">
-                                                <span class="font-medium">Ingredients:</span>
-                                                <span x-text="drink.ingredients.join(', ')"></span>
-                                            </p>
+                                <!-- Ingredient matches -->
+                                <div x-show="drink.ingredient_matches && drink.ingredient_matches.length > 0" class="flex flex-wrap gap-2 mb-3">
+                                    <template x-for="match in drink.ingredient_matches" :key="match.user_ingredient + match.matched_ingredient">
+                                        <div x-show="match.score < 100" class="match-chip">
+                                            <span x-text="match.user_ingredient" style="color: var(--cream);"></span>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--muted); flex-shrink:0;">
+                                                <path d="M5 12h14M13 6l6 6-6 6"/>
+                                            </svg>
+                                            <span x-text="match.matched_ingredient" style="color: var(--muted);"></span>
+                                            <span class="pill"
+                                                  :class="{
+                                                    'pill-green':  match.score > 85,
+                                                    'pill-yellow': match.score > 70 && match.score <= 85,
+                                                    'pill-red':    match.score <= 70
+                                                  }"
+                                                  style="font-size:10px; padding: 1px 7px;"
+                                                  x-text="Math.round(match.score) + '%'">
+                                            </span>
                                         </div>
                                     </template>
-                                    <div x-show="suggestion.matching_drinks.length === 0"
-                                        class="px-4 py-3 text-sm text-gray-500 italic bg-white">
-                                        No specific drinks matched yet — but adding this ingredient increases your
-                                        cocktail score!
-                                    </div>
                                 </div>
+
+                                <!-- Ingredients list -->
+                                <p class="text-xs" style="color: var(--muted); line-height: 1.6;">
+                                    <span x-text="drink.ingredients.join(' · ')"></span>
+                                </p>
+
                             </div>
                         </template>
                     </div>
-                </div>
 
-                <div id="drink-results-container">
-                    <div x-show="probability !== null">
-                        <div x-show="!exactMatch" class="mb-6">
-                            <hr class="my-6 border-t border-gray-200">
-                            <div class="mb-6">
-                                <h4 class="text-lg font-semibold mb-2 text-gray-800">
-                                    Is this a cocktail?
-                                    <span x-show="probability < 0.5"
-                                        class="inline-block px-3 py-1 text-sm rounded-full bg-red-100 text-red-800 font-bold"
-                                        x-text="Math.round(probability * 100) + '% Chance'"></span>
-                                    <span x-show="probability >= 0.5"
-                                        class="inline-block px-3 py-1 text-sm rounded-full bg-green-100 text-green-800 font-bold"
-                                        x-text="Math.round(probability * 100) + '% Chance'"></span>
-                                </h4>
-                            </div>
-                        </div>
-
-                        <div x-show="exactMatch" class="mb-6">
-                            <hr class="my-6 border-t border-gray-200">
-                            <div class="mb-6">
-                                <h5
-                                    class="text-lg font-semibold text-gray-800 bg-blue-50 p-3 rounded-lg border border-blue-200">
-                                    ✓ Exact Match Mode: Showing drinks with ONLY your ingredients
-                                </h5>
-                            </div>
-                        </div>
-
-                        <h5 class="text-xl font-bold mt-4 mb-3 text-gray-800">
-                            <span x-show="!exactMatch">Suggested Drinks:</span>
-                            <span x-show="exactMatch">Matching Drinks:</span>
-                        </h5>
-                        <div id="drink-list" class="space-y-4">
-                            <template x-for="(drink, index) in searchResults" :key="index">
-                                <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
-                                    <div class="flex items-start justify-between mb-3">
-                                        <div class="flex-1">
-                                            <span class="font-bold text-lg text-blue-700" x-text="drink.name"></span>
-                                            <span x-show="!exactMatch"
-                                                class="block px-3 py-1 mt-1 w-fit rounded-full bg-blue-100 text-blue-800 text-xs font-semibold"
-                                                x-text="(drink.similarity * 100).toFixed(1) + '% Match'"></span>
-                                        </div>
-                                        <button @click="toggleBookmark(drink)" title="Bookmark"
-                                            class="p-2 rounded-full hover:bg-gray-200 transition-colors">
-                                            <svg x-show="!isBookmarked(drink.name)" class="w-5 h-5 text-gray-400"
-                                                fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                                xmlns="http://www.w3.org/2000/svg">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
-                                            </svg>
-                                            <svg x-show="isBookmarked(drink.name)" x-cloak
-                                                class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"
-                                                xmlns="http://www.w3.org/2000/svg">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
-
-                                    <div x-show="!exactMatch && drink.ingredient_matches && drink.ingredient_matches.length > 0"
-                                        class="mb-4">
-                                        <div class="flex flex-wrap gap-2">
-                                            <template x-for="match in drink.ingredient_matches"
-                                                :key="match.user_ingredient + match.matched_ingredient">
-                                                <div x-show="match.score >= 100"
-                                                    class="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-green-100 border border-green-300 text-green-800 font-semibold">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none"
-                                                        viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="3" d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                    <span x-text="match.matched_ingredient"></span>
-                                                </div>
-                                                <div x-show="match.score < 100"
-                                                    class="flex items-center text-xs p-2 rounded-md bg-gray-200">
-                                                    <span x-show="match.original_user_ingredient"
-                                                        class="mr-2 px-1.5 py-0.5 rounded-full bg-orange-100 border border-orange-300 text-orange-700 font-semibold text-xs"
-                                                        x-text="'✏ ' + match.original_user_ingredient"></span>
-                                                    <span class="font-medium text-gray-800"
-                                                        x-text="match.user_ingredient"></span>
-                                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                                        class="h-4 w-4 mx-2 text-gray-500" fill="none"
-                                                        viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                                    </svg>
-                                                    <span class="text-gray-700"
-                                                        x-text="match.matched_ingredient"></span>
-                                                    <span class="ml-3 px-2 py-0.5 rounded-full text-xs font-bold"
-                                                        :class="{
-                                                        'bg-green-200 text-green-800': match.score > 85,
-                                                        'bg-yellow-200 text-yellow-800': match.score > 70 && match.score <= 85,
-                                                        'bg-red-200 text-red-800': match.score <= 70
-                                                      }" x-text="Math.round(match.score) + '%'">
-                                                    </span>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </div>
-                                    <div x-show="drink.flavors" class="mb-4 mt-3 bg-white p-3 rounded-md border border-gray-100">
-                                        <h6 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Flavor Profile</h6>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
-                                            <template x-for="(score, flavor) in drink.flavors" :key="flavor">
-                                                <div x-show="score > 0.05" class="flex items-center">
-                                                    <span class="w-16 text-xs font-medium text-gray-600 capitalize" x-text="flavor"></span>
-                                                    
-                                                    <div class="flex-1 h-2 bg-gray-100 rounded-full mx-2 overflow-hidden">
-                                                        <div class="h-full rounded-full transition-all duration-500"
-                                                            :style="`width: ${score * 100}%`"
-                                                            :class="{
-                                                                'bg-pink-500': flavor === 'sweet' || flavor === 'berry',
-                                                                'bg-yellow-400': flavor === 'sour' || flavor === 'citrus',
-                                                                'bg-red-600': flavor === 'bitter' || flavor === 'spicy',
-                                                                'bg-amber-700': flavor === 'boozy' || flavor === 'smoky',
-                                                                'bg-green-500': flavor === 'herbal' || flavor === 'minty',
-                                                                'bg-purple-500': flavor === 'fruity' || flavor === 'floral',
-                                                                'bg-blue-400': !['sweet','sour','bitter','boozy','herbal','fruity','citrus','spicy','smoky','minty','berry','floral'].includes(flavor)
-                                                            }">
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <span class="text-[10px] text-gray-400 font-mono w-8 text-right" 
-                                                        x-text="Math.round(score * 100) + '%'"></span>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </div>
-                                    <p class="text-gray-600 text-sm"><span class="font-semibold">Ingredients:</span>
-                                        <span x-text="drink.ingredients.join(', ')"></span>
-                                    </p>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
+                {% endif %}
                 </div>
             </div>
 
+            <!-- Bookmarks Tab -->
             <div x-show="tab === 'bookmarks'" x-cloak>
-                <h5 class="text-xl font-bold mb-3 text-gray-800">Bookmarked Drinks</h5>
-                <div x-show="bookmarks.length === 0" class="text-center py-8 px-4 bg-gray-50 rounded-lg">
-                    <p class="text-gray-500">You haven't bookmarked any drinks yet.</p>
+                <p class="display-font text-2xl mb-5" style="color: var(--cream);">Saved drinks</p>
+
+                <div x-show="bookmarks.length === 0" class="empty-state">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--muted); margin: 0 auto 12px;">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <p class="text-sm" style="color: var(--muted);">No saved drinks yet.</p>
+                    <p class="text-xs mt-1" style="color: var(--muted); opacity: 0.6;">Tap the bookmark icon on any suggestion.</p>
                 </div>
-                <div class="space-y-4">
+
+                <div class="space-y-3">
                     <template x-for="drink in bookmarks" :key="drink.name">
-                        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
-                            <div class="flex items-start justify-between mb-3">
-                                <div class="flex-1">
-                                    <span class="font-bold text-lg text-blue-700" x-text="drink.name"></span>
-                                </div>
-                                <button @click="toggleBookmark(drink)" title="Remove Bookmark"
-                                    class="p-2 rounded-full hover:bg-gray-200 transition-colors">
-                                    <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"
-                                        xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                        <div class="drink-card">
+                            <div class="flex items-start justify-between mb-2">
+                                <p class="display-font text-xl font-semibold" style="color: var(--cream); line-height:1.2;" x-text="drink.name"></p>
+                                <button @click="toggleBookmark(drink)" title="Remove" class="bookmark-btn saved">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                                     </svg>
                                 </button>
                             </div>
-                            <p class="text-gray-600 mb-4 text-sm">
-                                <span class="font-semibold">Ingredients:</span>
-                                <span
-                                    x-text="Array.isArray(drink.ingredients) ? drink.ingredients.join(', ') : ''"></span>
+                            <p class="text-xs" style="color: var(--muted); line-height: 1.6;">
+                                <span x-text="Array.isArray(drink.ingredients) ? drink.ingredients.join(' · ') : ''"></span>
                             </p>
                         </div>
                     </template>
                 </div>
             </div>
+
         </div>
+
+        <!-- Footer -->
+        <p class="text-center mt-6 text-xs" style="color: var(--muted); opacity: 0.5; letter-spacing: 0.06em;">
+            Drink responsibly
+        </p>
+
     </div>
 </body>
-
 </html>
