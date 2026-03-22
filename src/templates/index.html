@@ -31,8 +31,7 @@
 
         body {
             background-color: var(--ink);
-            background-image:
-                radial-gradient(ellipse 80% 60% at 50% -10%, rgba(200, 146, 42, 0.12) 0%, transparent 70%);
+            background-image: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(200, 146, 42, 0.12) 0%, transparent 70%);
             min-height: 100vh;
             font-family: 'DM Sans', sans-serif;
             color: var(--cream);
@@ -40,19 +39,12 @@
 
         .display-font { font-family: 'Cormorant Garamond', Georgia, serif; }
 
-        /* Card */
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 16px;
         }
-        .card-raised {
-            background: var(--surface-raised);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-        }
 
-        /* Tab nav */
         .tab-link {
             position: relative;
             padding: 14px 4px;
@@ -80,7 +72,6 @@
         .tab-link.active::after { transform: scaleX(1); }
         .tab-link:hover:not(.active) { color: var(--cream-dim); }
 
-        /* Badge pill */
         .pill {
             display: inline-block;
             padding: 2px 10px;
@@ -89,13 +80,11 @@
             font-weight: 500;
             letter-spacing: 0.04em;
         }
-        .pill-amber { background: rgba(200, 146, 42, 0.18); color: var(--amber-light); border: 1px solid rgba(200, 146, 42, 0.35); }
-        .pill-green { background: rgba(80, 160, 100, 0.15); color: #7DD4A0; border: 1px solid rgba(80, 160, 100, 0.3); }
-        .pill-red   { background: rgba(200, 80, 60, 0.15);  color: #F08070; border: 1px solid rgba(200, 80, 60, 0.3); }
-        .pill-yellow{ background: rgba(220, 180, 60, 0.15); color: #D4B84A; border: 1px solid rgba(220, 180, 60, 0.3); }
-        .pill-muted { background: rgba(255,255,255,0.06); color: var(--muted); border: 1px solid rgba(255,255,255,0.1); }
+        .pill-amber  { background: rgba(200, 146, 42, 0.18); color: var(--amber-light); border: 1px solid rgba(200, 146, 42, 0.35); }
+        .pill-green  { background: rgba(80, 160, 100, 0.15); color: #7DD4A0; border: 1px solid rgba(80, 160, 100, 0.3); }
+        .pill-red    { background: rgba(200, 80, 60, 0.15);  color: #F08070; border: 1px solid rgba(200, 80, 60, 0.3); }
+        .pill-yellow { background: rgba(220, 180, 60, 0.15); color: #D4B84A; border: 1px solid rgba(220, 180, 60, 0.3); }
 
-        /* Input */
         .drink-input {
             width: 100%;
             background: rgba(255,255,255,0.04);
@@ -114,7 +103,6 @@
             background: rgba(255,255,255,0.06);
         }
 
-        /* Submit button */
         .btn-primary {
             width: 100%;
             padding: 13px;
@@ -127,12 +115,12 @@
             color: var(--ink);
             border: none;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
+            transition: background 0.2s, transform 0.1s, opacity 0.2s;
         }
         .btn-primary:hover { background: var(--amber-light); }
         .btn-primary:active { transform: scale(0.99); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Drink result card */
         .drink-card {
             background: rgba(255,255,255,0.03);
             border: 1px solid var(--border);
@@ -145,7 +133,6 @@
             background: rgba(255,255,255,0.05);
         }
 
-        /* Bookmark button */
         .bookmark-btn {
             background: none;
             border: 1px solid transparent;
@@ -163,7 +150,6 @@
         }
         .bookmark-btn.saved { color: var(--amber); }
 
-        /* Ingredient match chip */
         .match-chip {
             display: inline-flex;
             align-items: center;
@@ -176,14 +162,12 @@
             color: var(--cream-dim);
         }
 
-        /* Divider */
         .divider {
             border: none;
             border-top: 1px solid var(--border);
             margin: 28px 0;
         }
 
-        /* Probability badge */
         .prob-badge {
             display: inline-flex;
             align-items: center;
@@ -197,12 +181,6 @@
             border-radius: 50%;
         }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
-
-        /* Empty state */
         .empty-state {
             padding: 48px 24px;
             text-align: center;
@@ -210,7 +188,6 @@
             border-radius: 12px;
         }
 
-        /* Bookmark count badge */
         .count-badge {
             display: inline-flex;
             align-items: center;
@@ -225,6 +202,20 @@
             color: var(--amber-light);
             margin-left: 6px;
         }
+
+        .spinner {
+            width: 18px; height: 18px;
+            border: 2px solid rgba(200,146,42,0.3);
+            border-top-color: var(--amber);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -234,11 +225,35 @@
             tab: 'search',
             bookmarks: [],
             searchResults: [],
+            ingredientInput: '',
+            loading: false,
+            error: null,
+            probability: null,
             init() {
                 const saved = localStorage.getItem('drinkBookmarks_v2');
                 this.bookmarks = saved ? JSON.parse(saved) : [];
-                if (window.drinkResultsData) {
-                    this.searchResults = window.drinkResultsData;
+            },
+            async suggest() {
+                const ingredients = this.ingredientInput.split(',').map(s => s.trim()).filter(Boolean);
+                if (!ingredients.length) return;
+                this.loading = true;
+                this.error = null;
+                this.searchResults = [];
+                this.probability = null;
+                try {
+                    const res = await fetch('/suggest', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ingredients })
+                    });
+                    if (!res.ok) throw new Error('Request failed (' + res.status + ')');
+                    const data = await res.json();
+                    this.searchResults = data.similar_drinks || [];
+                    this.probability = data.probability ?? null;
+                } catch (e) {
+                    this.error = e.message;
+                } finally {
+                    this.loading = false;
                 }
             },
             toggleBookmark(drink) {
@@ -261,7 +276,7 @@
 
         <!-- Header -->
         <div class="text-center mb-10">
-<h1 class="display-font text-5xl font-semibold" style="color: var(--cream); line-height: 1.1;">birit<span style="color: var(--amber);">AI</span></h1>
+            <h1 class="display-font text-5xl font-semibold" style="color: var(--cream); line-height: 1.1;">birit<span style="color: var(--amber);">AI</span></h1>
             <p class="mt-3 text-sm" style="color: var(--muted);">Enter what you have. We'll find what to make.</p>
         </div>
 
@@ -284,59 +299,59 @@
             </div>
 
             <!-- Search Tab -->
-            <div x-show="tab === 'search'" x-cloak>
+            <div x-show="tab === 'search'">
 
-                <form method="post" action="/" class="mb-2">
+                <div class="mb-6">
                     <label for="ingredients" class="block mb-2 text-xs tracking-widest uppercase" style="color: var(--muted);">Your ingredients</label>
                     <input
                         type="text"
                         id="ingredients"
-                        name="ingredients"
+                        x-model="ingredientInput"
+                        @keydown.enter="suggest()"
                         class="drink-input"
                         placeholder="vodka, lime juice, ginger beer…"
-                        value="{{ result.searched_ingredients|join(', ') if result else '' }}"
                     >
-                    <button type="submit" class="btn-primary mt-4">Find Drinks</button>
-                </form>
+                    <button
+                        @click="suggest()"
+                        :disabled="loading"
+                        class="btn-primary mt-4"
+                        style="display: flex; align-items: center; justify-content: center; gap: 10px;"
+                    >
+                        <span x-show="loading" class="spinner"></span>
+                        <span x-text="loading ? 'Finding drinks…' : 'Find Drinks'"></span>
+                    </button>
+                </div>
 
-                <div id="drink-results-container">
-                {% if result %}
-                    {% if result.similar_drinks %}
-                    <script>
-                        window.drinkResultsData = {{ result.similar_drinks|tojson|safe }};
-                    </script>
-                    {% endif %}
+                <!-- Error -->
+                <div x-show="error" x-cloak class="mb-4 px-4 py-3 rounded-lg text-sm" style="background: rgba(200,80,60,0.1); border: 1px solid rgba(200,80,60,0.25); color: #F08070;" x-text="error"></div>
+
+                <!-- Results -->
+                <div x-show="searchResults.length > 0 || probability !== null" x-cloak>
 
                     <hr class="divider">
 
                     <!-- Cocktail probability -->
-                    <div class="mb-6">
+                    <div x-show="probability !== null" class="mb-6">
                         <p class="text-xs tracking-widest uppercase mb-3" style="color: var(--muted);">Cocktail likelihood</p>
-                        {% if result.probability < 0.5 %}
-                            <div class="prob-badge" style="background: rgba(200,80,60,0.1); border: 1px solid rgba(200,80,60,0.25);">
-                                <span class="dot" style="background: #F08070;"></span>
-                                <span style="color: #F08070; font-weight:500;">{{ (result.probability * 100) | round }}%</span>
-                                <span style="color: var(--muted); font-size:12px;">— unlikely to be a known cocktail</span>
-                            </div>
-                        {% else %}
-                            <div class="prob-badge" style="background: rgba(80,160,100,0.1); border: 1px solid rgba(80,160,100,0.25);">
-                                <span class="dot" style="background: #7DD4A0;"></span>
-                                <span style="color: #7DD4A0; font-weight:500;">{{ (result.probability * 100) | round }}%</span>
-                                <span style="color: var(--muted); font-size:12px;">— likely a recognisable cocktail</span>
-                            </div>
-                        {% endif %}
+                        <div class="prob-badge"
+                             :style="probability < 0.5
+                                ? 'background: rgba(200,80,60,0.1); border: 1px solid rgba(200,80,60,0.25);'
+                                : 'background: rgba(80,160,100,0.1); border: 1px solid rgba(80,160,100,0.25);'">
+                            <span class="dot" :style="probability < 0.5 ? 'background: #F08070;' : 'background: #7DD4A0;'"></span>
+                            <span :style="probability < 0.5 ? 'color: #F08070; font-weight:500;' : 'color: #7DD4A0; font-weight:500;'"
+                                  x-text="Math.round(probability * 100) + '%'"></span>
+                            <span style="color: var(--muted); font-size:12px;"
+                                  x-text="probability < 0.5 ? '— unlikely to be a known cocktail' : '— likely a recognisable cocktail'"></span>
+                        </div>
                     </div>
 
-                    <!-- Suggested drinks header -->
-                    <p class="display-font text-2xl mb-5" style="color: var(--cream);">
-                        Suggested drinks
-                    </p>
+                    <!-- Suggested drinks -->
+                    <p class="display-font text-2xl mb-5" style="color: var(--cream);">Suggested drinks</p>
 
-                    <div class="space-y-3" id="drink-list">
+                    <div class="space-y-3">
                         <template x-for="(drink, index) in searchResults" :key="index">
                             <div class="drink-card">
 
-                                <!-- Top row: name + match + bookmark -->
                                 <div class="flex items-start justify-between mb-3">
                                     <div>
                                         <p class="display-font text-xl font-semibold" style="color: var(--cream); line-height:1.2;" x-text="drink.name"></p>
@@ -356,7 +371,6 @@
                                     </button>
                                 </div>
 
-                                <!-- Ingredient matches -->
                                 <div x-show="drink.ingredient_matches && drink.ingredient_matches.length > 0" class="flex flex-wrap gap-2 mb-3">
                                     <template x-for="match in drink.ingredient_matches" :key="match.user_ingredient + match.matched_ingredient">
                                         <div x-show="match.score < 100" class="match-chip">
@@ -378,7 +392,6 @@
                                     </template>
                                 </div>
 
-                                <!-- Ingredients list -->
                                 <p class="text-xs" style="color: var(--muted); line-height: 1.6;">
                                     <span x-text="drink.ingredients.join(' · ')"></span>
                                 </p>
@@ -387,7 +400,6 @@
                         </template>
                     </div>
 
-                {% endif %}
                 </div>
             </div>
 
@@ -424,7 +436,6 @@
 
         </div>
 
-        <!-- Footer -->
         <p class="text-center mt-6 text-xs" style="color: var(--muted); opacity: 0.5; letter-spacing: 0.06em;">
             Drink responsibly
         </p>
