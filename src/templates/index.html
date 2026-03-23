@@ -608,16 +608,16 @@
                             style="padding: 4px 10px; border-radius: 6px; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; border: none; cursor: pointer; transition: all 0.15s; background: none;">
                             % Match
                         </button>
-                        <button type="button" @click="sortOrder = 'alpha'"
-                            :style="sortOrder === 'alpha' ? 'background: rgba(200,146,42,0.2); color: var(--amber-light);' : 'color: var(--muted);'"
-                            style="padding: 4px 10px; border-radius: 6px; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; border: none; cursor: pointer; transition: all 0.15s; background: none;">
-                            A – Z
+                        <button type="button" @click="sortOrder = sortOrder === 'alpha' ? 'alpha-desc' : 'alpha'"
+                            :style="(sortOrder === 'alpha' || sortOrder === 'alpha-desc') ? 'background: rgba(200,146,42,0.2); color: var(--amber-light);' : 'color: var(--muted);'"
+                            style="padding: 4px 10px; border-radius: 6px; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; border: none; cursor: pointer; transition: all 0.15s; background: none;"
+                            x-text="sortOrder === 'alpha-desc' ? 'Z – A' : 'A – Z'">
                         </button>
                     </div>
                 </div>
 
                 <div class="space-y-3">
-                    <template x-for="(drink, index) in (sortOrder === 'alpha' ? [...searchResults].sort((a,b) => a.name.localeCompare(b.name)) : searchResults)" :key="drink.name">
+                    <template x-for="(drink, index) in (sortOrder === 'alpha' ? [...searchResults].sort((a,b) => a.name.localeCompare(b.name)) : sortOrder === 'alpha-desc' ? [...searchResults].sort((a,b) => b.name.localeCompare(a.name)) : searchResults)" :key="drink.name">
                         <div class="drink-card">
                             <div class="flex items-start justify-between mb-3">
                                 <div>
