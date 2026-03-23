@@ -12,7 +12,7 @@ from sklearn.linear_model import LogisticRegression
 
 MIN_INGREDIENT_SCORE = 80
 FINAL_SIMILARITY_THRESHOLD = 0.5
-AUTOCORRECT_THRESHOLD = 80
+AUTOCORRECT_THRESHOLD = 60
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
