@@ -311,6 +311,7 @@
         exactMatch: false,
         nextSuggestions: [],
         expandedSuggestion: null,
+        sortOrder: 'match',
         init() {
             const saved = localStorage.getItem('drinkBookmarks_v2');
             this.bookmarks = saved ? JSON.parse(saved) : [];
@@ -596,13 +597,27 @@
                 </div>
 
                 <!-- Drink list -->
-                <p class="display-font text-2xl mb-4" style="color: var(--cream);">
-                    <span x-show="!exactMatch">Suggested drinks</span>
-                    <span x-show="exactMatch">Matching drinks</span>
-                </p>
+                <div class="flex items-center justify-between mb-4">
+                    <p class="display-font text-2xl" style="color: var(--cream);">
+                        <span x-show="!exactMatch">Suggested drinks</span>
+                        <span x-show="exactMatch">Matching drinks</span>
+                    </p>
+                    <div class="flex gap-1" style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; padding: 3px;">
+                        <button type="button" @click="sortOrder = 'match'"
+                            :style="sortOrder === 'match' ? 'background: rgba(200,146,42,0.2); color: var(--amber-light);' : 'color: var(--muted);'"
+                            style="padding: 4px 10px; border-radius: 6px; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; border: none; cursor: pointer; transition: all 0.15s; background: none;">
+                            % Match
+                        </button>
+                        <button type="button" @click="sortOrder = 'alpha'"
+                            :style="sortOrder === 'alpha' ? 'background: rgba(200,146,42,0.2); color: var(--amber-light);' : 'color: var(--muted);'"
+                            style="padding: 4px 10px; border-radius: 6px; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; border: none; cursor: pointer; transition: all 0.15s; background: none;">
+                            A – Z
+                        </button>
+                    </div>
+                </div>
 
                 <div class="space-y-3">
-                    <template x-for="(drink, index) in searchResults" :key="index">
+                    <template x-for="(drink, index) in (sortOrder === 'alpha' ? [...searchResults].sort((a,b) => a.name.localeCompare(b.name)) : searchResults)" :key="drink.name">
                         <div class="drink-card">
                             <div class="flex items-start justify-between mb-3">
                                 <div>
@@ -760,4 +775,12 @@
                 background: transparent; color: var(--muted);
                 border: 1px solid var(--border); cursor: pointer;
                 transition: color 0.2s, border-color 0.2s;
-            " onmouseover="this.style.color='var(--cream)'; this.style.borderColor='var(--border-strong)'" onmouseout="this.style.color='var(--muted)'; this.style.borderColor='var(--
+            " onmouseover="this.style.color='var(--cream)'; this.style.borderColor='var(--border-strong)'" onmouseout="this.style.color='var(--muted)'; this.style.borderColor='var(--border)'">
+                No, I'm not
+            </button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
