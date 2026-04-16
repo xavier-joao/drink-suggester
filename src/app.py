@@ -8,7 +8,8 @@ from src.utils.suggest import (
     get_drink_recommendations,
     flavor_probabilities,
     get_exact_match_drinks,
-    suggest_next_ingredient
+    suggest_next_ingredient,
+    engine
 )
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -90,6 +91,11 @@ def before_request():
 @app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
+
+@app.route('/ingredients', methods=['GET'])
+def ingredients():
+    engine.ensure_loaded()
+    return jsonify(sorted(engine.vocab_list))
 
 @app.route('/suggest', methods=['POST'])
 def suggest():

@@ -415,6 +415,34 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+
+        /* Autocomplete */
+        .ac-wrap { position: relative; }
+        .ac-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0; right: 0;
+            background: #2A2319;
+            border: 1px solid var(--border-strong);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 100;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .ac-item {
+            padding: 9px 16px;
+            font-size: 14px;
+            color: var(--cream-dim);
+            cursor: pointer;
+            transition: background 0.12s, color 0.12s;
+            text-transform: capitalize;
+        }
+        .ac-item:hover, .ac-item.ac-active {
+            background: rgba(200,146,42,0.15);
+            color: var(--amber-light);
+        }
     </style>
 </head>
 <body>
@@ -436,10 +464,48 @@
         expandedSuggestion: null,
         sortOrder: 'match',
         hasSearched: false,
-        init() {
+        allIngredients: [],
+        acSuggestions: [],
+        acIndex: -1,
+        acOpen: false,
+        async init() {
             const saved = localStorage.getItem('drinkBookmarks_v2');
             this.bookmarks = saved ? JSON.parse(saved) : [];
+            try {
+                const res = await fetch('/ingredients');
+                if (res.ok) this.allIngredients = await res.json();
+            } catch(e) {}
         },
+        acInput(e) {
+            const val = e.target.value.trim().toLowerCase();
+            if (!val) { this.acSuggestions = []; this.acOpen = false; this.acIndex = -1; return; }
+            this.acSuggestions = this.allIngredients
+                .filter(i => i.includes(val) && !this.ingredientTags.includes(i))
+                .slice(0, 8);
+            this.acIndex = -1;
+            this.acOpen = this.acSuggestions.length > 0;
+        },
+        acKeydown(e) {
+            if (!this.acOpen) { this.addIngredientTag(e); return; }
+            if (e.key === 'ArrowDown') { e.preventDefault(); this.acIndex = Math.min(this.acIndex + 1, this.acSuggestions.length - 1); return; }
+            if (e.key === 'ArrowUp')   { e.preventDefault(); this.acIndex = Math.max(this.acIndex - 1, -1); return; }
+            if (e.key === 'Escape')    { this.acOpen = false; this.acIndex = -1; return; }
+            if ((e.key === 'Enter' || e.key === ',') && this.acIndex >= 0) {
+                e.preventDefault();
+                this.acSelect(this.acSuggestions[this.acIndex]);
+                return;
+            }
+            this.addIngredientTag(e);
+        },
+        acSelect(ingredient) {
+            if (!this.ingredientTags.includes(ingredient)) this.ingredientTags.push(ingredient);
+            const el = document.getElementById('ingredients');
+            if (el) el.value = '';
+            this.acSuggestions = []; this.acOpen = false; this.acIndex = -1;
+            this.nextSuggestions = []; this.expandedSuggestion = null;
+            try { this.searchDrinks(); } catch(err) { console.error(err); }
+        },
+        acClose() { this.acOpen = false; this.acIndex = -1; },
         addIngredientTag(e) {
             if (e.key === 'Enter' || e.key === ',') {
                 e.preventDefault();
@@ -589,14 +655,26 @@
                 <h2 class="display-font" style="font-size: 22px; color: var(--cream); margin-bottom: 4px;">Your bar</h2>
                 <p style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">Add ingredients one by one. Press Enter or comma to confirm.</p>
 
-                <div style="margin-bottom: 8px;">
+                <div class="ac-wrap" style="margin-bottom: 8px;" @click.outside="acClose()">
                     <input
                         type="text"
                         id="ingredients"
-                        @keydown="addIngredientTag"
+                        @input="acInput"
+                        @keydown="acKeydown"
                         class="drink-input"
                         placeholder="type an ingredient and press Enter…"
+                        autocomplete="off"
                     >
+                    <div x-show="acOpen" x-cloak class="ac-dropdown">
+                        <template x-for="(item, idx) in acSuggestions" :key="item">
+                            <div
+                                class="ac-item"
+                                :class="idx === acIndex ? 'ac-active' : ''"
+                                @mousedown.prevent="acSelect(item)"
+                                x-text="item"
+                            ></div>
+                        </template>
+                    </div>
                 </div>
 
                 <!-- Tags -->
